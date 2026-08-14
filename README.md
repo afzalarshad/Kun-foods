@@ -143,6 +143,13 @@ src/store/cart.ts               Zustand cart store
   payments — partial payments, COD collection, refunds — and see a live
   paid/due balance for the order, all tied to a reconcilable ledger rather
   than a single order-level status flag.
+- **Shipments & labels** (`/admin/shipments`, per order at
+  `/admin/orders/[id]`): book a courier — **Leopards**, **TCS**, **PostEx**,
+  or manual/own rider — with a tracking number, weight, and COD amount,
+  track it through pending → booked → picked up → in transit → delivered,
+  and generate a printable shipping label (`/admin/orders/[id]/label`) with
+  sender/recipient address and COD amount. `/admin/shipments` is a
+  filterable manifest of every booking across couriers, also printable.
 
 ## Payments
 
