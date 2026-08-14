@@ -12,6 +12,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       orders: { orderBy: { createdAt: "desc" }, take: 5 },
       tags: true,
       notes: { orderBy: { createdAt: "desc" }, take: 3 },
+      tickets: { orderBy: { createdAt: "desc" }, take: 3 },
     },
   });
 
@@ -20,6 +21,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const allOrders = await prisma.order.findMany({ where: { customerId: id }, select: { total: true, status: true } });
   const totalSpent = allOrders.reduce((sum, o) => sum + o.total, 0);
   const openOrders = allOrders.filter((o) => !["delivered", "cancelled"].includes(o.status)).length;
+  const openTickets = customer.tickets.filter((t) => !["resolved", "closed"].includes(t.status)).length;
 
   return NextResponse.json({
     customer: {
@@ -33,6 +35,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       orderCount: allOrders.length,
       totalSpent,
       openOrders,
+      openTickets,
     },
     tags: customer.tags.map((t) => t.tag),
     recentNotes: customer.notes,
@@ -42,6 +45,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       status: o.status,
       total: o.total,
       createdAt: o.createdAt,
+    })),
+    recentTickets: customer.tickets.map((t) => ({
+      id: t.id,
+      ticketNumber: t.ticketNumber,
+      subject: t.subject,
+      status: t.status,
     })),
   });
 }

@@ -19,6 +19,7 @@ export default async function AdminCustomerDetailPage({
       tags: { orderBy: { createdAt: "asc" } },
       notes: { orderBy: { createdAt: "desc" } },
       addresses: { orderBy: { createdAt: "desc" } },
+      tickets: { orderBy: { createdAt: "desc" } },
     },
   });
 
@@ -31,6 +32,7 @@ export default async function AdminCustomerDetailPage({
   const waLink = customer.phone
     ? `https://wa.me/${customer.phone.replace(/[^0-9]/g, "")}`
     : null;
+  const newTicketHref = `/admin/tickets/new?customerName=${encodeURIComponent(customer.name)}&customerEmail=${encodeURIComponent(customer.email)}&customerPhone=${encodeURIComponent(customer.phone)}`;
 
   return (
     <div className="max-w-3xl">
@@ -57,6 +59,12 @@ export default async function AdminCustomerDetailPage({
             className="rounded-full bg-chili px-4 py-2 text-sm font-heading font-semibold text-white hover:bg-chili-dark"
           >
             + New order
+          </Link>
+          <Link
+            href={newTicketHref}
+            className="rounded-full border-2 border-ink px-4 py-2 text-sm font-heading font-semibold hover:bg-ink hover:text-cream"
+          >
+            🎫 New ticket
           </Link>
         </div>
       </div>
@@ -95,6 +103,26 @@ export default async function AdminCustomerDetailPage({
       <div className="mt-6">
         <CustomerNotes customerId={customer.id} notes={customer.notes} />
       </div>
+
+      {customer.tickets.length > 0 && (
+        <div className="mt-6 rounded-3xl bg-white p-6 shadow-sm">
+          <h2 className="font-heading font-bold">Support tickets</h2>
+          <div className="mt-4 flex flex-col divide-y divide-ink/5">
+            {customer.tickets.map((t) => (
+              <Link
+                key={t.id}
+                href={`/admin/tickets/${t.id}`}
+                className="flex items-center justify-between py-3 text-sm hover:text-chili"
+              >
+                <span>
+                  #{t.ticketNumber} <span className="text-ink-soft">— {t.subject}</span>
+                </span>
+                <span className="capitalize text-ink-soft">{t.status.replace("_", " ")}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 rounded-3xl bg-white p-6 shadow-sm">
         <h2 className="font-heading font-bold">Order history</h2>

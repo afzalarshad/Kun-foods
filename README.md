@@ -150,6 +150,13 @@ src/store/cart.ts               Zustand cart store
   and generate a printable shipping label (`/admin/orders/[id]/label`) with
   sender/recipient address and COD amount. `/admin/shipments` is a
   filterable manifest of every booking across couriers, also printable.
+- **Support tickets** (`/admin/tickets`): log a customer call, WhatsApp
+  message, or complaint as a ticket (category, priority, status, optional
+  order link), reply in a threaded conversation with public replies and
+  staff-only internal notes, and track it through
+  open → pending → in progress → waiting on customer → resolved → closed.
+  Tickets are linked to the customer record, shown on the customer detail
+  page, and surfaced (with an open-ticket count) in the CRM quick-view.
 
 ## Payments
 
