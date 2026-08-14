@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+:root {
+  --color-cream: #fff8ec;
+  --color-cream-dark: #fbecd2;
+  --color-ink: #2a1b12;
+  --color-ink-soft: #5c493d;
+
+  --color-chili: #d64545;
+  --color-chili-dark: #b6342f;
+  --color-saffron: #f3a712;
+  --color-saffron-dark: #d68c00;
+  --color-basil: #3c7a4f;
+  --color-basil-dark: #2b5c3a;
+  --color-plum: #6b3f69;
+
+  --radius-blob: 63% 37% 54% 46% / 43% 45% 55% 57%;
+}
+
+@theme inline {
+  --color-background: var(--color-cream);
+  --color-foreground: var(--color-ink);
+
+  --color-cream: var(--color-cream);
+  --color-cream-dark: var(--color-cream-dark);
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+
+  --color-chili: var(--color-chili);
+  --color-chili-dark: var(--color-chili-dark);
+  --color-saffron: var(--color-saffron);
+  --color-saffron-dark: var(--color-saffron-dark);
+  --color-basil: var(--color-basil);
+  --color-basil-dark: var(--color-basil-dark);
+  --color-plum: var(--color-plum);
+
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-poppins);
+}
+
+body {
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+.font-heading {
+  font-family: var(--font-heading), var(--font-sans), sans-serif;
+}
+
+.blob {
+  border-radius: var(--radius-blob);
+}
+
+.blob-alt {
+  border-radius: 42% 58% 65% 35% / 48% 40% 60% 52%;
+}
+
+@keyframes blob-float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(1.5%, -2%) scale(1.03);
+  }
+}
+
+.animate-blob-float {
+  animation: blob-float 9s ease-in-out infinite;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
