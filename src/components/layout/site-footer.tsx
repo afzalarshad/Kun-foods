@@ -27,6 +27,7 @@ export function SiteFooter() {
             <h4 className="font-heading font-semibold text-cream">Shop</h4>
             <ul className="mt-3 space-y-2 text-sm text-cream/70">
               <li><Link href="/collections/all" className="hover:text-cream">All products</Link></li>
+              <li><Link href="/deals" className="hover:text-cream">Deals & Bundles</Link></li>
               <li><Link href="/collections/spices-masalas" className="hover:text-cream">Spices & Masalas</Link></li>
               <li><Link href="/collections/pickles-chutneys" className="hover:text-cream">Pickles & Chutneys</Link></li>
               <li><Link href="/collections/sweets-desserts" className="hover:text-cream">Sweets & Desserts</Link></li>

@@ -10,14 +10,49 @@ import { useHydrated } from "@/lib/use-hydrated";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, clear } = useCart();
+  const { items, subtotal, clear, couponCode, setCoupon } = useCart();
   const hydrated = useHydrated();
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "card">("cod");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const shipping = calculateShipping(subtotal());
-  const total = subtotal() + shipping;
+  const [couponInput, setCouponInput] = useState("");
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+
+  const shipping = calculateShipping(subtotal() - couponDiscount);
+  const total = subtotal() - couponDiscount + shipping;
+
+  async function handleApplyCoupon() {
+    if (!couponInput.trim()) return;
+    setApplyingCoupon(true);
+    setCouponError(null);
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: couponInput, subtotal: subtotal() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Invalid coupon code");
+      setCoupon(data.code);
+      setCouponDiscount(data.discount);
+    } catch (err) {
+      setCoupon(null);
+      setCouponDiscount(0);
+      setCouponError(err instanceof Error ? err.message : "Invalid coupon code");
+    } finally {
+      setApplyingCoupon(false);
+    }
+  }
+
+  function handleRemoveCoupon() {
+    setCoupon(null);
+    setCouponDiscount(0);
+    setCouponInput("");
+    setCouponError(null);
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -38,7 +73,8 @@ export default function CheckoutPage() {
           postalCode: form.get("postalCode") || undefined,
           notes: form.get("notes") || undefined,
           paymentMethod,
-          items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+          couponCode: couponCode || undefined,
+          items: items.map((i) => ({ type: i.type, id: i.id, quantity: i.quantity })),
         }),
       });
 
@@ -192,10 +228,10 @@ export default function CheckoutPage() {
           <h2 className="font-heading text-lg font-bold">Order summary</h2>
           <ul className="mt-4 flex flex-col gap-3">
             {items.map((item) => (
-              <li key={item.productId} className="flex items-center gap-3">
+              <li key={item.id} className="flex items-center gap-3">
                 <ProductImage
                   emoji={item.image}
-                  seed={item.productId}
+                  seed={item.id}
                   className="h-14 w-14 shrink-0"
                   size="text-2xl"
                 />
@@ -209,11 +245,51 @@ export default function CheckoutPage() {
               </li>
             ))}
           </ul>
-          <div className="mt-4 flex justify-between border-t border-ink/10 pt-4 text-sm text-ink-soft">
+
+          <div className="mt-4 border-t border-ink/10 pt-4">
+            {couponCode ? (
+              <div className="flex items-center justify-between rounded-xl bg-basil/10 px-3 py-2 text-sm">
+                <span className="font-medium text-basil-dark">🎟️ {couponCode} applied</span>
+                <button
+                  type="button"
+                  onClick={handleRemoveCoupon}
+                  className="text-basil-dark underline"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value)}
+                  placeholder="Coupon code"
+                  className="flex-1 rounded-xl border border-ink/20 bg-white px-3 py-2 text-sm uppercase focus:border-chili focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyCoupon}
+                  disabled={applyingCoupon}
+                  className="rounded-xl border-2 border-ink px-4 py-2 text-sm font-heading font-semibold hover:bg-ink hover:text-cream disabled:opacity-60"
+                >
+                  {applyingCoupon ? "…" : "Apply"}
+                </button>
+              </div>
+            )}
+            {couponError && <p className="mt-1.5 text-xs text-chili">{couponError}</p>}
+          </div>
+
+          <div className="mt-4 flex justify-between text-sm text-ink-soft">
             <span>Subtotal</span>
             <span>{formatPrice(subtotal())}</span>
           </div>
-          <div className="mt-2 flex justify-between text-sm text-ink-soft">
+          {couponDiscount > 0 && (
+            <div className="mt-1 flex justify-between text-sm text-basil-dark">
+              <span>Discount</span>
+              <span>−{formatPrice(couponDiscount)}</span>
+            </div>
+          )}
+          <div className="mt-1 flex justify-between text-sm text-ink-soft">
             <span>Shipping</span>
             <span>{shipping === 0 ? "Free" : formatPrice(shipping)}</span>
           </div>

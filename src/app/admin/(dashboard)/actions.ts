@@ -3,21 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user) redirect("/admin/login");
-}
-
-function slugify(name: string) {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
+import { requireAdmin, slugify } from "@/lib/require-admin";
+import { notifyOrderStatusChanged } from "@/lib/notifications";
 
 const productSchema = z.object({
   name: z.string().min(2).max(150),
@@ -122,7 +110,15 @@ const statuses = ["pending", "processing", "shipped", "delivered", "cancelled"] 
 export async function updateOrderStatus(orderId: string, formData: FormData) {
   await requireAdmin();
   const status = z.enum(statuses).parse(formData.get("status"));
-  await prisma.order.update({ where: { id: orderId }, data: { status } });
+  const order = await prisma.order.update({
+    where: { id: orderId },
+    data: { status },
+    include: { items: true },
+  });
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${orderId}`);
+
+  notifyOrderStatusChanged(order).catch((err) =>
+    console.error("[updateOrderStatus] notification failed:", err)
+  );
 }

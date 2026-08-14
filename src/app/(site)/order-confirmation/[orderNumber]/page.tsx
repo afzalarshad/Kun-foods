@@ -47,6 +47,12 @@ export default async function OrderConfirmationPage({
           <span>Subtotal</span>
           <span>{formatPrice(order.subtotal)}</span>
         </div>
+        {order.discount > 0 && (
+          <div className="mt-1 flex justify-between text-sm text-basil-dark">
+            <span>Discount</span>
+            <span>−{formatPrice(order.discount)}</span>
+          </div>
+        )}
         <div className="mt-1 flex justify-between text-sm text-ink-soft">
           <span>Shipping</span>
           <span>{order.shipping === 0 ? "Free" : formatPrice(order.shipping)}</span>

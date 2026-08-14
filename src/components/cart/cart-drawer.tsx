@@ -54,24 +54,30 @@ export function CartDrawer() {
           ) : (
             <ul className="flex flex-col gap-4">
               {items.map((item) => (
-                <li key={item.productId} className="flex gap-3">
+                <li key={item.id} className="flex gap-3">
                   <ProductImage
                     emoji={item.image}
-                    seed={item.productId}
+                    seed={item.id}
                     className="h-20 w-20 shrink-0"
                     size="text-3xl"
                   />
                   <div className="flex flex-1 flex-col">
                     <div className="flex items-start justify-between gap-2">
-                      <Link
-                        href={`/products/${item.slug}`}
-                        onClick={close}
-                        className="font-heading text-sm font-semibold leading-snug hover:text-chili"
-                      >
-                        {item.name}
-                      </Link>
+                      {item.slug ? (
+                        <Link
+                          href={`/products/${item.slug}`}
+                          onClick={close}
+                          className="font-heading text-sm font-semibold leading-snug hover:text-chili"
+                        >
+                          {item.name}
+                        </Link>
+                      ) : (
+                        <span className="font-heading text-sm font-semibold leading-snug">
+                          {item.name}
+                        </span>
+                      )}
                       <button
-                        onClick={() => removeItem(item.productId)}
+                        onClick={() => removeItem(item.id)}
                         className="shrink-0 text-ink-soft hover:text-chili"
                         aria-label={`Remove ${item.name}`}
                       >
@@ -85,7 +91,7 @@ export function CartDrawer() {
                       <div className="flex items-center rounded-full border border-ink/20">
                         <button
                           className="px-3 py-1 text-sm"
-                          onClick={() => setQuantity(item.productId, item.quantity - 1)}
+                          onClick={() => setQuantity(item.id, item.quantity - 1)}
                           aria-label="Decrease quantity"
                         >
                           −
@@ -95,7 +101,7 @@ export function CartDrawer() {
                         </span>
                         <button
                           className="px-3 py-1 text-sm"
-                          onClick={() => setQuantity(item.productId, item.quantity + 1)}
+                          onClick={() => setQuantity(item.id, item.quantity + 1)}
                           aria-label="Increase quantity"
                         >
                           +

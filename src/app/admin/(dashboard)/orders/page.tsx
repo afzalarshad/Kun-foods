@@ -24,6 +24,7 @@ export default async function AdminOrdersPage() {
             <tr className="border-b border-ink/10 text-ink-soft">
               <th className="px-6 py-3 font-medium">Order</th>
               <th className="px-6 py-3 font-medium">Customer</th>
+              <th className="px-6 py-3 font-medium">Source</th>
               <th className="px-6 py-3 font-medium">Payment</th>
               <th className="px-6 py-3 font-medium">Status</th>
               <th className="px-6 py-3 font-medium">Total</th>
@@ -33,7 +34,7 @@ export default async function AdminOrdersPage() {
           <tbody>
             {orders.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-ink-soft">
+                <td colSpan={7} className="px-6 py-8 text-center text-ink-soft">
                   No orders yet.
                 </td>
               </tr>
@@ -46,6 +47,15 @@ export default async function AdminOrdersPage() {
                   </Link>
                 </td>
                 <td className="px-6 py-3">{order.customerName}</td>
+                <td className="px-6 py-3">
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      order.source === "pos" ? "bg-plum/20 text-plum" : "bg-cream-dark"
+                    }`}
+                  >
+                    {order.source === "pos" ? "POS" : "Online"}
+                  </span>
+                </td>
                 <td className="px-6 py-3 uppercase text-ink-soft">{order.paymentMethod}</td>
                 <td className="px-6 py-3">
                   <span

@@ -23,7 +23,15 @@ export default async function AdminOrderDetailPage({
               day: "numeric",
               month: "long",
               year: "numeric",
-            })}
+            })}{" "}
+            ·{" "}
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                order.source === "pos" ? "bg-plum/20 text-plum" : "bg-cream-dark"
+              }`}
+            >
+              {order.source === "pos" ? "POS" : "Online"}
+            </span>
           </p>
         </div>
         <OrderStatusForm orderId={order.id} currentStatus={order.status} />
@@ -63,6 +71,12 @@ export default async function AdminOrderDetailPage({
           <span>Subtotal</span>
           <span>{formatPrice(order.subtotal)}</span>
         </div>
+        {order.discount > 0 && (
+          <div className="mt-1 flex justify-between text-sm text-basil-dark">
+            <span>Discount</span>
+            <span>−{formatPrice(order.discount)}</span>
+          </div>
+        )}
         <div className="mt-1 flex justify-between text-sm text-ink-soft">
           <span>Shipping</span>
           <span>{order.shipping === 0 ? "Free" : formatPrice(order.shipping)}</span>

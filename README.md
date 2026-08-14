@@ -27,6 +27,7 @@ This is a self-hosted Next.js app instead of a Shopify theme, which means:
 - **Zustand** for cart state (persisted to `localStorage`)
 - **NextAuth v5** (credentials provider) for the admin panel
 - **Zod** for request validation
+- **Resend** for transactional email, **Twilio** for SMS (both optional)
 
 ## Deploy to Vercel (recommended — get a live link in minutes)
 
@@ -70,37 +71,73 @@ seed script, default `admin@kunfoods.com` / `kunfoods123`).
 ## Project structure
 
 ```
-prisma/schema.prisma        Database schema (Product, Category, Order, AdminUser)
-prisma/seed.ts               Seed data (6 categories, 16 products, admin user)
-src/app/(site)/               Storefront: home, collections, product, cart, checkout
-src/app/admin/                Admin panel (login + protected dashboard)
-src/app/api/                  Route handlers (orders, order tracking, auth)
-src/components/               UI components (product, cart, layout, admin)
-src/lib/                      Data access, formatting, auth helpers
-src/store/cart.ts             Zustand cart store
+prisma/schema.prisma          Database schema (Product, Category, Order, Customer, Coupon, Bundle, AdminUser)
+prisma/seed.ts                 Seed data (6 categories, 16 products, admin user)
+src/app/(site)/                 Storefront: home, collections, product, deals, cart, checkout
+src/app/admin/                  Admin panel (login + protected dashboard, POS, bundles, coupons, customers)
+src/app/api/                    Route handlers (orders, coupon validation, order tracking, auth, seed)
+src/components/                 UI components (product, cart, layout, admin)
+src/lib/                        Data access, order creation, notifications, formatting, auth helpers
+src/store/cart.ts               Zustand cart store
 ```
 
 ## Key features
 
 - **Storefront**: home page, category/collection pages with sorting, product
-  detail pages, persistent cart drawer, cart page.
-- **Checkout**: address form, cash-on-delivery or card (demo) payment,
-  server-side price recalculation and stock validation, order confirmation
-  page.
+  detail pages, a Deals & Bundles page, persistent cart drawer, cart page.
+- **Checkout**: address form, coupon code entry, cash-on-delivery or card
+  (demo) payment, server-side price/stock/coupon recalculation, order
+  confirmation page.
 - **Order tracking**: customers can look up an order by order number + email
   at `/track-order`.
-- **Admin panel** (`/admin`): dashboard stats, full product CRUD, order list
-  and status updates — protected by NextAuth and proxy-level auth checks.
+- **Notifications**: order confirmation and status-change emails (Resend) and
+  SMS (Twilio) to the customer, plus a new-order email to the store owner.
+  Both are optional — the app runs fine without them and just logs to the
+  console instead of sending.
+- **WhatsApp ordering**: a floating "Order on WhatsApp" button site-wide and
+  a prefilled per-product WhatsApp link, once `NEXT_PUBLIC_WHATSAPP_NUMBER`
+  is set.
+- **Coupons**: percentage or fixed-amount discount codes with an optional
+  minimum order, usage limit, and expiry date — managed at `/admin/coupons`.
+- **Bundles**: grouped products sold at a special price, shown at `/deals`
+  and manageable at `/admin/bundles`.
+- **Admin panel** (`/admin`): dashboard stats, full product/coupon/bundle
+  CRUD, order list and status updates (which trigger the notification
+  emails/SMS above) — protected by NextAuth and proxy-level auth checks.
+- **POS** (`/admin/pos`): create an order for an in-person or phone sale —
+  pick products/bundles, apply a coupon, enter the customer, and submit. Uses
+  the same order-creation logic (stock decrement, customer upsert,
+  notifications) as the storefront checkout.
+- **CRM** (`/admin/customers`): every order (storefront or POS) automatically
+  creates or updates a `Customer` record keyed by email, with order count,
+  total spent, and full order history.
 
 ## Payments
 
 Cash on delivery is fully functional. Card/online payment is wired up as a
 placeholder in the checkout UI — plug in a real gateway (Stripe, JazzCash,
-EasyPaisa, etc.) inside `src/app/api/orders/route.ts` and
+EasyPaisa, etc.) inside `src/lib/create-order.ts` and
 `src/app/(site)/checkout/page.tsx`.
+
+## Notifications (email & SMS) setup
+
+Both are optional — without them, the app just logs what it would have sent.
+To turn them on, add these to your `.env` (locally) or Vercel Environment
+Variables (production), then redeploy/restart:
+
+| Variable | Purpose |
+| --- | --- |
+| `RESEND_API_KEY` | From [resend.com](https://resend.com) (free tier available). Enables order confirmation + status-update emails. |
+| `EMAIL_FROM` | Sender address, e.g. `Kun Foods <orders@yourdomain.com>`. Must be a domain verified in Resend — until then, the default `onboarding@resend.dev` sandbox address works for testing. |
+| `ADMIN_NOTIFICATION_EMAIL` | Where new-order alerts are sent (e.g. your own inbox). |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | From [twilio.com](https://www.twilio.com). Enables order confirmation + status-update SMS. |
+| `TWILIO_PHONE_NUMBER` | Your Twilio sending number, e.g. `+15551234567`. |
+| `NEXT_PUBLIC_WHATSAPP_NUMBER` | Your WhatsApp business number in international format with no `+` or spaces, e.g. `923001234567`. Enables the WhatsApp order button; hidden if unset. |
 
 ## Production notes
 
 - Set a strong, unique `AUTH_SECRET` and change the seeded admin password.
 - Replace the emoji-based `ProductImage` placeholders with real product
   photography via `next/image` once you have assets.
+- Set up the notification env vars above once you're ready for real order
+  emails/SMS — otherwise notifications are silently skipped.
