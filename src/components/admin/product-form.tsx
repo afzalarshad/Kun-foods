@@ -109,6 +109,59 @@ export function ProductForm({
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">SKU (optional)</label>
+          <input
+            name="sku"
+            defaultValue={product?.sku ?? ""}
+            className="w-full rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">Barcode (optional)</label>
+          <input
+            name="barcode"
+            defaultValue={product?.barcode ?? ""}
+            className="w-full rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">Cost price (Rs., optional)</label>
+          <input
+            type="number"
+            name="costPrice"
+            min={0}
+            step="0.01"
+            defaultValue={product?.costPrice ? product.costPrice / 100 : undefined}
+            className="w-full rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">Reorder level (optional)</label>
+          <input
+            type="number"
+            name="reorderLevel"
+            min={0}
+            defaultValue={product?.reorderLevel ?? undefined}
+            placeholder="Alert when stock falls to/below this"
+            className="w-full rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-1.5 block text-sm font-medium">Supplier (optional)</label>
+        <input
+          name="supplier"
+          defaultValue={product?.supplier ?? ""}
+          className="w-full rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+        />
+      </div>
+
       <div>
         <label className="mb-1.5 block text-sm font-medium">Badge (optional)</label>
         <select

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
+import { logAudit } from "@/lib/audit";
 
 const couponSchema = z.object({
   code: z.string().min(2).max(30),
@@ -29,10 +30,10 @@ function parseForm(formData: FormData) {
 }
 
 export async function createCoupon(formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const parsed = parseForm(formData);
 
-  await prisma.coupon.create({
+  const created = await prisma.coupon.create({
     data: {
       code: parsed.code.trim().toUpperCase(),
       type: parsed.type,
@@ -44,15 +45,24 @@ export async function createCoupon(formData: FormData) {
     },
   });
 
+  await logAudit({
+    actorEmail: session.user.email ?? "unknown",
+    action: "coupon.create",
+    entityType: "Coupon",
+    entityId: created.id,
+    after: { code: created.code, type: created.type, value: created.value },
+  });
+
   revalidatePath("/admin/coupons");
   redirect("/admin/coupons");
 }
 
 export async function updateCoupon(couponId: string, formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const parsed = parseForm(formData);
+  const before = await prisma.coupon.findUniqueOrThrow({ where: { id: couponId } });
 
-  await prisma.coupon.update({
+  const updated = await prisma.coupon.update({
     where: { id: couponId },
     data: {
       code: parsed.code.trim().toUpperCase(),
@@ -65,12 +75,31 @@ export async function updateCoupon(couponId: string, formData: FormData) {
     },
   });
 
+  await logAudit({
+    actorEmail: session.user.email ?? "unknown",
+    action: "coupon.update",
+    entityType: "Coupon",
+    entityId: couponId,
+    before: { code: before.code, value: before.value, active: before.active },
+    after: { code: updated.code, value: updated.value, active: updated.active },
+  });
+
   revalidatePath("/admin/coupons");
   redirect("/admin/coupons");
 }
 
 export async function deleteCoupon(couponId: string) {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const before = await prisma.coupon.findUniqueOrThrow({ where: { id: couponId } });
   await prisma.coupon.delete({ where: { id: couponId } });
+
+  await logAudit({
+    actorEmail: session.user.email ?? "unknown",
+    action: "coupon.delete",
+    entityType: "Coupon",
+    entityId: couponId,
+    before: { code: before.code },
+  });
+
   revalidatePath("/admin/coupons");
 }

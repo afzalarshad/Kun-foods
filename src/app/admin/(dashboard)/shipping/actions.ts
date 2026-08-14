@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
+import { logAudit } from "@/lib/audit";
 
 const shippingZoneSchema = z.object({
   city: z.string().min(2).max(100),
@@ -23,10 +24,10 @@ function parseForm(formData: FormData) {
 }
 
 export async function createShippingZone(formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const parsed = parseForm(formData);
 
-  await prisma.shippingZone.create({
+  const created = await prisma.shippingZone.create({
     data: {
       city: parsed.city.trim(),
       rate: Math.round(parsed.rate * 100),
@@ -35,15 +36,24 @@ export async function createShippingZone(formData: FormData) {
     },
   });
 
+  await logAudit({
+    actorEmail: session.user.email ?? "unknown",
+    action: "shipping_zone.create",
+    entityType: "ShippingZone",
+    entityId: created.id,
+    after: { city: created.city, rate: created.rate },
+  });
+
   revalidatePath("/admin/shipping");
   redirect("/admin/shipping");
 }
 
 export async function updateShippingZone(zoneId: string, formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const parsed = parseForm(formData);
+  const before = await prisma.shippingZone.findUniqueOrThrow({ where: { id: zoneId } });
 
-  await prisma.shippingZone.update({
+  const updated = await prisma.shippingZone.update({
     where: { id: zoneId },
     data: {
       city: parsed.city.trim(),
@@ -53,12 +63,31 @@ export async function updateShippingZone(zoneId: string, formData: FormData) {
     },
   });
 
+  await logAudit({
+    actorEmail: session.user.email ?? "unknown",
+    action: "shipping_zone.update",
+    entityType: "ShippingZone",
+    entityId: zoneId,
+    before: { city: before.city, rate: before.rate },
+    after: { city: updated.city, rate: updated.rate },
+  });
+
   revalidatePath("/admin/shipping");
   redirect("/admin/shipping");
 }
 
 export async function deleteShippingZone(zoneId: string) {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const before = await prisma.shippingZone.findUniqueOrThrow({ where: { id: zoneId } });
   await prisma.shippingZone.delete({ where: { id: zoneId } });
+
+  await logAudit({
+    actorEmail: session.user.email ?? "unknown",
+    action: "shipping_zone.delete",
+    entityType: "ShippingZone",
+    entityId: zoneId,
+    before: { city: before.city },
+  });
+
   revalidatePath("/admin/shipping");
 }

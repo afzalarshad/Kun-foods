@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
 import { OrderStatusForm } from "@/components/admin/order-status-form";
+import { OrderMetaForm } from "@/components/admin/order-meta-form";
+import { OrderTimeline } from "@/components/admin/order-timeline";
+import { ReturnsPanel } from "@/components/admin/returns-panel";
 
 export default async function AdminOrderDetailPage({
   params,
@@ -9,7 +12,14 @@ export default async function AdminOrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const order = await prisma.order.findUnique({ where: { id }, include: { items: true } });
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: {
+      items: true,
+      statusEvents: { orderBy: { createdAt: "desc" } },
+      returns: { orderBy: { createdAt: "desc" } },
+    },
+  });
   if (!order) notFound();
 
   return (
@@ -35,6 +45,10 @@ export default async function AdminOrderDetailPage({
           </p>
         </div>
         <OrderStatusForm orderId={order.id} currentStatus={order.status} />
+      </div>
+
+      <div className="mt-4">
+        <OrderMetaForm orderId={order.id} priority={order.priority} assignedTo={order.assignedTo} />
       </div>
 
       <div className="mt-8 grid gap-6 sm:grid-cols-2">
@@ -88,6 +102,22 @@ export default async function AdminOrderDetailPage({
         <p className="mt-3 text-sm text-ink-soft">
           Payment method: <span className="uppercase">{order.paymentMethod}</span>
         </p>
+        {order.cancellationReason && (
+          <p className="mt-2 rounded-xl bg-chili/10 px-3 py-2 text-sm text-chili-dark">
+            Cancellation reason: {order.cancellationReason}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-6 rounded-3xl bg-white p-6 shadow-sm">
+        <h2 className="font-heading font-bold">Status history</h2>
+        <div className="mt-4">
+          <OrderTimeline events={order.statusEvents} />
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <ReturnsPanel orderId={order.id} returns={order.returns} />
       </div>
     </div>
   );

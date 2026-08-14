@@ -19,21 +19,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (typeof email !== "string" || typeof password !== "string") return null;
 
         const admin = await prisma.adminUser.findUnique({ where: { email } });
-        if (!admin) return null;
+        if (!admin || !admin.active) return null;
 
         const valid = await bcrypt.compare(password, admin.passwordHash);
         if (!valid) return null;
 
-        return { id: admin.id, email: admin.email, name: admin.name };
+        return { id: admin.id, email: admin.email, name: admin.name, role: admin.role };
       },
     }),
   ],
   callbacks: {
-    authorized: ({ auth, request }) => {
-      const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
-      const isLoginPage = request.nextUrl.pathname === "/admin/login";
-      if (!isAdminRoute || isLoginPage) return true;
-      return !!auth?.user;
+    // Route protection lives in src/proxy.ts (role-aware), not here.
+    jwt: ({ token, user }) => {
+      if (user) token.role = user.role;
+      return token;
+    },
+    session: ({ session, token }) => {
+      if (session.user) session.user.role = (token.role as string) ?? "staff";
+      return session;
     },
   },
 });

@@ -114,8 +114,23 @@ src/store/cart.ts               Zustand cart store
   the same order-creation logic (stock decrement, customer upsert,
   notifications) as the storefront checkout.
 - **CRM** (`/admin/customers`): every order (storefront or POS) automatically
-  creates or updates a `Customer` record keyed by email, with order count,
-  total spent, and full order history.
+  creates or updates a `Customer` record keyed by email, with tags, internal
+  notes, saved addresses, order count, total spent, and full order history.
+  A global search bar in the admin header looks customers up instantly by
+  name/phone/email/order number and opens a quick-view popup (lifetime
+  value, open orders, notes, WhatsApp/new-order shortcuts) — built for the
+  "customer calls in" workflow.
+- **Roles & staff accounts** (`/admin/users`, admin-only): create logins for
+  staff with three roles — **Admin** (full access), **Staff** (everything
+  except user management/audit log), **POS** (confined to the POS screen
+  only, enforced in `src/proxy.ts`, not just hidden in the UI).
+- **Audit log** (`/admin/audit-log`, admin-only): every product, order,
+  coupon, bundle, shipping-zone, and user change is recorded with who did
+  it and when.
+- **Order lifecycle**: status changes keep a full timestamped history
+  (`OrderStatusEvent`) instead of overwriting a single field, support an
+  optional note and a priority/assigned-staff field, and returns/refunds
+  are tracked per order at `/admin/orders/[id]`.
 
 ## Payments
 

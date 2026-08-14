@@ -4,19 +4,24 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 
-const links = [
-  { href: "/admin", label: "Dashboard", icon: "📊", exact: true },
+type NavLink = { href: string; label: string; icon: string; exact?: boolean; roles?: string[] };
+
+const links: NavLink[] = [
+  { href: "/admin", label: "Dashboard", icon: "📊", exact: true, roles: ["admin", "staff"] },
   { href: "/admin/pos", label: "POS", icon: "🧾" },
-  { href: "/admin/products", label: "Products", icon: "🌶️" },
-  { href: "/admin/bundles", label: "Bundles", icon: "🎁" },
-  { href: "/admin/coupons", label: "Coupons", icon: "🏷️" },
-  { href: "/admin/orders", label: "Orders", icon: "📦" },
-  { href: "/admin/customers", label: "Customers", icon: "👥" },
-  { href: "/admin/shipping", label: "Shipping", icon: "🚚" },
+  { href: "/admin/products", label: "Products", icon: "🌶️", roles: ["admin", "staff"] },
+  { href: "/admin/bundles", label: "Bundles", icon: "🎁", roles: ["admin", "staff"] },
+  { href: "/admin/coupons", label: "Coupons", icon: "🏷️", roles: ["admin", "staff"] },
+  { href: "/admin/orders", label: "Orders", icon: "📦", roles: ["admin", "staff"] },
+  { href: "/admin/customers", label: "Customers", icon: "👥", roles: ["admin", "staff"] },
+  { href: "/admin/shipping", label: "Shipping", icon: "🚚", roles: ["admin", "staff"] },
+  { href: "/admin/users", label: "Users", icon: "🔑", roles: ["admin"] },
+  { href: "/admin/audit-log", label: "Audit Log", icon: "🕵️", roles: ["admin"] },
 ];
 
-export function AdminSidebar({ userEmail }: { userEmail: string }) {
+export function AdminSidebar({ userEmail, role }: { userEmail: string; role: string }) {
   const pathname = usePathname();
+  const visibleLinks = links.filter((link) => !link.roles || link.roles.includes(role));
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-ink/10 bg-cream p-6">
@@ -32,7 +37,7 @@ export function AdminSidebar({ userEmail }: { userEmail: string }) {
       <p className="mt-1 text-xs text-ink-soft">Admin panel</p>
 
       <nav className="mt-8 flex flex-col gap-1">
-        {links.map((link) => {
+        {visibleLinks.map((link) => {
           const active = link.exact ? pathname === link.href : pathname.startsWith(link.href);
           return (
             <Link
@@ -50,7 +55,12 @@ export function AdminSidebar({ userEmail }: { userEmail: string }) {
       </nav>
 
       <div className="mt-auto flex flex-col gap-3 border-t border-ink/10 pt-4">
-        <p className="truncate text-xs text-ink-soft">{userEmail}</p>
+        <div className="truncate text-xs text-ink-soft">
+          {userEmail}
+          <span className="ml-1.5 rounded-full bg-cream-dark px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink">
+            {role}
+          </span>
+        </div>
         <Link href="/" className="text-sm font-medium text-ink-soft hover:text-chili">
           ← Back to store
         </Link>
