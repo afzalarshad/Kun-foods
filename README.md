@@ -23,18 +23,42 @@ This is a self-hosted Next.js app instead of a Shopify theme, which means:
 
 - **Next.js 16** (App Router, React 19, TypeScript, Turbopack)
 - **Tailwind CSS v4** for styling
-- **Prisma + SQLite** for the database (swap the `datasource` in
-  `prisma/schema.prisma` to Postgres/MySQL for production)
+- **Prisma + PostgreSQL** for the database
 - **Zustand** for cart state (persisted to `localStorage`)
 - **NextAuth v5** (credentials provider) for the admin panel
 - **Zod** for request validation
 
-## Getting started
+## Deploy to Vercel (recommended — get a live link in minutes)
+
+GitHub Pages can't run this site (it only serves static files — no database,
+checkout, or admin login). Vercel runs it exactly as built, for free:
+
+1. Click **Deploy** below and sign in with your GitHub account.
+2. When prompted, add a free Postgres database (Vercel offers a **Neon**
+   integration right in the import flow) — this auto-fills `DATABASE_URL`.
+3. Add the remaining environment variables when asked:
+   - `AUTH_SECRET` — any long random string (e.g. generate one at
+     [generate-secret.vercel.app/32](https://generate-secret.vercel.app/32))
+   - `ADMIN_EMAIL` / `ADMIN_PASSWORD` — your admin login
+4. Click **Deploy**. Vercel builds the app and runs `prisma migrate deploy`
+   automatically, so the database tables are created on first deploy.
+5. Once it's live, seed sample products from your machine:
+   ```bash
+   vercel env pull .env        # pulls the live DATABASE_URL locally
+   npm install
+   npm run db:seed
+   ```
+   (Requires the [Vercel CLI](https://vercel.com/docs/cli): `npm i -g vercel`, then `vercel link`.)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fafzalarshad%2FKun-foods%2Ftree%2Fclaude%2Fkun-foods-website-dxu9hy&env=AUTH_SECRET,ADMIN_EMAIL,ADMIN_PASSWORD&envDescription=AUTH_SECRET%3A%20any%20long%20random%20string.%20ADMIN_EMAIL%2FADMIN_PASSWORD%3A%20your%20admin%20login.%20DATABASE_URL%20is%20filled%20in%20automatically%20if%20you%20add%20a%20Postgres%20storage%20during%20import.&project-name=kun-foods&repository-name=kun-foods)
+
+## Local development
 
 ```bash
 npm install
-cp .env.example .env      # then edit AUTH_SECRET / admin credentials
-npx prisma migrate dev    # creates the SQLite DB and applies the schema
+cp .env.example .env      # fill in DATABASE_URL (a free Postgres from
+                           # neon.tech or supabase.com works), AUTH_SECRET, etc.
+npx prisma migrate dev    # applies the schema to your database
 npm run db:seed           # seeds categories, products, and the admin user
 npm run dev
 ```
@@ -77,8 +101,6 @@ EasyPaisa, etc.) inside `src/app/api/orders/route.ts` and
 
 ## Production notes
 
-- Swap SQLite for Postgres/MySQL before deploying (update `DATABASE_URL`
-  and the `provider` in `prisma/schema.prisma`).
-- Set a strong `AUTH_SECRET` and change the seeded admin password.
+- Set a strong, unique `AUTH_SECRET` and change the seeded admin password.
 - Replace the emoji-based `ProductImage` placeholders with real product
   photography via `next/image` once you have assets.
