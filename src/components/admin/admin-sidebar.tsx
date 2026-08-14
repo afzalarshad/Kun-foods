@@ -12,6 +12,7 @@ const links: NavLink[] = [
   { href: "/admin/pos", label: "POS", icon: "🧾" },
   { href: "/admin/products", label: "Products", icon: "🌶️", roles: ["admin", "staff"] },
   { href: "/admin/inventory", label: "Inventory", icon: "📋", roles: ["admin", "staff"] },
+  { href: "/admin/warehouse", label: "Warehouse", icon: "📲", roles: ["admin", "staff"] },
   { href: "/admin/bundles", label: "Bundles", icon: "🎁", roles: ["admin", "staff"] },
   { href: "/admin/coupons", label: "Coupons", icon: "🏷️", roles: ["admin", "staff"] },
   { href: "/admin/orders", label: "Orders", icon: "📦", roles: ["admin", "staff"] },

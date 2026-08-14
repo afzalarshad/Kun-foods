@@ -163,16 +163,17 @@ model Order {
 }
 
 model OrderItem {
-  id        String   @id @default(cuid())
-  orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String?
-  product   Product? @relation(fields: [productId], references: [id])
-  bundleId  String?
-  bundle    Bundle?  @relation(fields: [bundleId], references: [id])
-  name      String
-  price     Int
-  quantity  Int
+  id             String   @id @default(cuid())
+  orderId        String
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String?
+  product        Product? @relation(fields: [productId], references: [id])
+  bundleId       String?
+  bundle         Bundle?  @relation(fields: [bundleId], references: [id])
+  name           String
+  price          Int
+  quantity       Int
+  pickedQuantity Int      @default(0)
 }
 
 model OrderStatusEvent {

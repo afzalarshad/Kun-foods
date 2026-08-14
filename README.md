@@ -167,6 +167,17 @@ src/store/cart.ts               Zustand cart store
   are matched by SKU (update) or created fresh, with per-row validation
   and an error report, plus automatic inventory-movement logging for any
   stock changes brought in by the import.
+- **Warehouse pick & pack** (`/admin/warehouse`): confirmed orders enter a
+  pick queue sorted by priority. Each order has a scan screen — type or
+  scan a barcode/SKU (works with any USB/Bluetooth scanner acting as a
+  keyboard, or manual entry on a phone) to check off that unit against the
+  order; over-scanning or unmatched codes are rejected, and "mark packed"
+  stays disabled until every line item is fully picked, then moves the
+  order to shipped with a timestamped audit trail. The same rules are
+  enforced by a documented `/api/warehouse/*` API surface (product
+  lookup by barcode/SKU, pick queue, scan, mark-packed) for a future
+  Android/handheld scanner app — the web UI keeps working with or
+  without it.
 
 ## Payments
 
