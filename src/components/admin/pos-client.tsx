@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatPrice, calculateShipping } from "@/lib/format";
+import { formatPrice } from "@/lib/format";
+import { getShippingForCity, type ShippingZonePreview } from "@/lib/shipping-preview";
 import { createPosOrder } from "@/app/admin/(dashboard)/pos/actions";
 
 type Sellable = { id: string; name: string; price: number; image: string; stock?: number };
@@ -12,9 +13,11 @@ type LineItem = { type: "product" | "bundle"; id: string; name: string; price: n
 export function PosClient({
   products,
   bundles,
+  zones,
 }: {
   products: Sellable[];
   bundles: Sellable[];
+  zones: ShippingZonePreview[];
 }) {
   const router = useRouter();
   const [cart, setCart] = useState<LineItem[]>([]);
@@ -59,7 +62,7 @@ export function PosClient({
   }
 
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const shipping = cart.length > 0 ? calculateShipping(subtotal - couponDiscount) : 0;
+  const shipping = city.trim() ? getShippingForCity(zones, city, subtotal - couponDiscount) : 0;
   const total = subtotal - couponDiscount + shipping;
 
   async function handleApplyCoupon() {
@@ -179,12 +182,27 @@ export function PosClient({
               type="email"
               className="rounded-xl border border-ink/20 px-4 py-2.5 focus:border-chili focus:outline-none"
             />
-            <input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="City (optional)"
-              className="rounded-xl border border-ink/20 px-4 py-2.5 focus:border-chili focus:outline-none"
-            />
+            {zones.length > 0 ? (
+              <select
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="rounded-xl border border-ink/20 px-4 py-2.5 focus:border-chili focus:outline-none"
+              >
+                <option value="">Walk-in / Pickup (no shipping)</option>
+                {zones.map((z) => (
+                  <option key={z.city} value={z.city}>
+                    {z.city} delivery
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="City for delivery (leave blank for walk-in)"
+                className="rounded-xl border border-ink/20 px-4 py-2.5 focus:border-chili focus:outline-none"
+              />
+            )}
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
@@ -255,7 +273,7 @@ export function PosClient({
           </div>
         )}
         <div className="mt-1 flex justify-between text-sm text-ink-soft">
-          <span>Shipping</span>
+          <span>Shipping{city ? ` (${city})` : ""}</span>
           <span>{shipping === 0 ? "Free" : formatPrice(shipping)}</span>
         </div>
         <div className="mt-3 flex justify-between border-t border-ink/10 pt-3 font-heading text-lg font-bold">

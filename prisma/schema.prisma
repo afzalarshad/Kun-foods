@@ -125,6 +125,16 @@ model OrderItem {
   quantity  Int
 }
 
+model ShippingZone {
+  id        String   @id @default(cuid())
+  city      String   @unique
+  rate      Int // paisa
+  freeAbove Int? // paisa; order subtotal (after discount) at or above this ships free. null = never auto-free
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model AdminUser {
   id           String   @id @default(cuid())
   email        String   @unique

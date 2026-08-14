@@ -12,6 +12,7 @@ const links = [
   { href: "/admin/coupons", label: "Coupons", icon: "🏷️" },
   { href: "/admin/orders", label: "Orders", icon: "📦" },
   { href: "/admin/customers", label: "Customers", icon: "👥" },
+  { href: "/admin/shipping", label: "Shipping", icon: "🚚" },
 ];
 
 export function AdminSidebar({ userEmail }: { userEmail: string }) {

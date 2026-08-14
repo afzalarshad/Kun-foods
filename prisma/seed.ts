@@ -9,9 +9,15 @@ async function main() {
   const adminEmail = process.env.ADMIN_EMAIL ?? "admin@kunfoods.com";
   const adminPassword = process.env.ADMIN_PASSWORD ?? "kunfoods123";
 
-  const { categoryCount, productCount } = await seedDatabase(prisma, adminEmail, adminPassword);
+  const { categoryCount, productCount, shippingZoneCount } = await seedDatabase(
+    prisma,
+    adminEmail,
+    adminPassword
+  );
 
-  console.log(`Seeded ${categoryCount} categories and ${productCount} products.`);
+  console.log(
+    `Seeded ${categoryCount} categories, ${productCount} products, and ${shippingZoneCount} shipping zones.`
+  );
   console.log(`Admin login: ${adminEmail} / ${adminPassword}`);
 }
 

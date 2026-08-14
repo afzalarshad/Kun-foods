@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { calculateShipping, generateOrderNumber } from "@/lib/format";
+import { generateOrderNumber } from "@/lib/format";
+import { getShippingRate } from "@/lib/shipping";
 import { notifyOrderCreated } from "@/lib/notifications";
 
 export type CreateOrderInput = {
@@ -94,19 +95,25 @@ export async function createOrder(input: CreateOrderInput) {
     couponId = coupon.id;
   }
 
-  const shipping = calculateShipping(subtotal - discount);
+  // An empty city means a walk-in/pickup POS sale — no delivery, no shipping charge.
+  // Only look up a real shipping rate when a city was actually given.
+  const rawCity = input.city.trim();
+  const shipping = rawCity ? await getShippingRate(rawCity, subtotal - discount) : 0;
   const total = subtotal - discount + shipping;
+
+  const city = rawCity || "Walk-in / Pickup";
+  const address = input.address.trim() || "In-store purchase";
 
   const order = await prisma.$transaction(async (tx) => {
     const customer = await tx.customer.upsert({
       where: { email: input.email },
-      update: { name: input.customerName, phone: input.phone, address: input.address, city: input.city },
+      update: { name: input.customerName, phone: input.phone, address, city },
       create: {
         name: input.customerName,
         email: input.email,
         phone: input.phone,
-        address: input.address,
-        city: input.city,
+        address,
+        city,
       },
     });
 
@@ -117,8 +124,8 @@ export async function createOrder(input: CreateOrderInput) {
         customerName: input.customerName,
         email: input.email,
         phone: input.phone,
-        address: input.address,
-        city: input.city,
+        address,
+        city,
         postalCode: input.postalCode,
         notes: input.notes,
         paymentMethod: input.paymentMethod,
