@@ -5,6 +5,7 @@ import { OrderStatusForm } from "@/components/admin/order-status-form";
 import { OrderMetaForm } from "@/components/admin/order-meta-form";
 import { OrderTimeline } from "@/components/admin/order-timeline";
 import { ReturnsPanel } from "@/components/admin/returns-panel";
+import { PaymentsPanel } from "@/components/admin/payments-panel";
 
 export default async function AdminOrderDetailPage({
   params,
@@ -18,6 +19,7 @@ export default async function AdminOrderDetailPage({
       items: true,
       statusEvents: { orderBy: { createdAt: "desc" } },
       returns: { orderBy: { createdAt: "desc" } },
+      payments: { orderBy: { createdAt: "desc" } },
     },
   });
   if (!order) notFound();
@@ -114,6 +116,10 @@ export default async function AdminOrderDetailPage({
         <div className="mt-4">
           <OrderTimeline events={order.statusEvents} />
         </div>
+      </div>
+
+      <div className="mt-6">
+        <PaymentsPanel orderId={order.id} orderTotal={order.total} payments={order.payments} />
       </div>
 
       <div className="mt-6">

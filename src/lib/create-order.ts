@@ -167,6 +167,15 @@ export async function createOrder(input: CreateOrderInput) {
       await tx.coupon.update({ where: { id: couponId }, data: { usedCount: { increment: 1 } } });
     }
 
+    await tx.payment.create({
+      data: {
+        orderId: created.id,
+        amount: total,
+        method: input.paymentMethod,
+        status: input.paymentMethod === "cod" ? "pending" : "paid",
+      },
+    });
+
     return created;
   });
 

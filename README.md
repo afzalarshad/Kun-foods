@@ -137,6 +137,12 @@ src/store/cart.ts               Zustand cart store
   each product's optional reorder level) surfaces on both the dashboard and
   the inventory page, and a manual "Adjust stock" form handles damage,
   recounts, and new stock received from a supplier.
+- **Payments** (per order at `/admin/orders/[id]`): every order gets an
+  initial `Payment` record matching its payment method (COD starts
+  "pending", card/cash start "paid"). Staff can record additional
+  payments — partial payments, COD collection, refunds — and see a live
+  paid/due balance for the order, all tied to a reconcilable ledger rather
+  than a single order-level status flag.
 
 ## Payments
 
