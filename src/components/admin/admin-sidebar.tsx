@@ -19,6 +19,7 @@ const links: NavLink[] = [
   { href: "/admin/tickets", label: "Support", icon: "🎫", roles: ["admin", "staff"] },
   { href: "/admin/shipping", label: "Shipping zones", icon: "🚚", roles: ["admin", "staff"] },
   { href: "/admin/shipments", label: "Shipments", icon: "📮", roles: ["admin", "staff"] },
+  { href: "/admin/import-export", label: "Import/Export", icon: "🗂️", roles: ["admin"] },
   { href: "/admin/users", label: "Users", icon: "🔑", roles: ["admin"] },
   { href: "/admin/audit-log", label: "Audit Log", icon: "🕵️", roles: ["admin"] },
 ];

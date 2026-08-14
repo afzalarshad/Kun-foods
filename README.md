@@ -162,6 +162,11 @@ src/store/cart.ts               Zustand cart store
   chart, top products by revenue, revenue by category, order-status
   breakdown, and payment-method breakdown — all computed live from the
   same orders/payments data, no separate analytics service needed.
+- **Import / export** (`/admin/import-export`, admin-only): download
+  products/orders/customers as CSV, or bulk-upload a products CSV — rows
+  are matched by SKU (update) or created fresh, with per-row validation
+  and an error report, plus automatic inventory-movement logging for any
+  stock changes brought in by the import.
 
 ## Payments
 
