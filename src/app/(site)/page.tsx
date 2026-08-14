@@ -3,6 +3,8 @@ import { ProductImage } from "@/components/product/product-image";
 import { ProductCard } from "@/components/product/product-card";
 import { getCategories, getFeaturedProducts } from "@/lib/data";
 
+export const revalidate = 60;
+
 export default async function Home() {
   const [categories, featured] = await Promise.all([
     getCategories(),
