@@ -224,6 +224,17 @@ export const products: Array<{
   },
 ];
 
+export const shippingZones = [
+  { city: "Karachi", rate: 20000, freeAbove: 300000 },
+  { city: "Lahore", rate: 25000, freeAbove: 400000 },
+  { city: "Islamabad", rate: 25000, freeAbove: 400000 },
+  { city: "Rawalpindi", rate: 25000, freeAbove: 400000 },
+  { city: "Faisalabad", rate: 30000, freeAbove: 500000 },
+  { city: "Multan", rate: 30000, freeAbove: 500000 },
+  { city: "Peshawar", rate: 30000, freeAbove: 500000 },
+  { city: "Quetta", rate: 35000, freeAbove: null },
+];
+
 export async function seedDatabase(
   prisma: PrismaClient,
   adminEmail: string,
@@ -269,6 +280,14 @@ export async function seedDatabase(
     });
   }
 
+  for (const zone of shippingZones) {
+    await prisma.shippingZone.upsert({
+      where: { city: zone.city },
+      update: zone,
+      create: zone,
+    });
+  }
+
   const passwordHash = await bcrypt.hash(adminPassword, 10);
   await prisma.adminUser.upsert({
     where: { email: adminEmail },
@@ -280,5 +299,9 @@ export async function seedDatabase(
     },
   });
 
-  return { categoryCount: categories.length, productCount: products.length };
+  return {
+    categoryCount: categories.length,
+    productCount: products.length,
+    shippingZoneCount: shippingZones.length,
+  };
 }

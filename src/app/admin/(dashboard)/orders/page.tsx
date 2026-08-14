@@ -10,6 +10,13 @@ const statusStyles: Record<string, string> = {
   cancelled: "bg-chili/20 text-chili-dark",
 };
 
+const priorityDot: Record<string, string> = {
+  low: "bg-ink/20",
+  normal: "",
+  high: "bg-saffron",
+  urgent: "bg-chili",
+};
+
 export default async function AdminOrdersPage() {
   const orders = await prisma.order.findMany({ orderBy: { createdAt: "desc" } });
 
@@ -42,7 +49,13 @@ export default async function AdminOrdersPage() {
             {orders.map((order) => (
               <tr key={order.id} className="border-b border-ink/5 last:border-0">
                 <td className="px-6 py-3">
-                  <Link href={`/admin/orders/${order.id}`} className="font-medium hover:text-chili">
+                  <Link href={`/admin/orders/${order.id}`} className="flex items-center gap-2 font-medium hover:text-chili">
+                    {priorityDot[order.priority] && (
+                      <span
+                        className={`h-2 w-2 shrink-0 rounded-full ${priorityDot[order.priority]}`}
+                        title={`${order.priority} priority`}
+                      />
+                    )}
                     #{order.orderNumber}
                   </Link>
                 </td>

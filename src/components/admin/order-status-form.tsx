@@ -18,7 +18,7 @@ export function OrderStatusForm({
   return (
     <form
       action={(formData) => startTransition(() => updateWithId(formData))}
-      className="flex items-center gap-2"
+      className="flex flex-wrap items-center gap-2"
     >
       <select
         name="status"
@@ -31,6 +31,11 @@ export function OrderStatusForm({
           </option>
         ))}
       </select>
+      <input
+        name="note"
+        placeholder="Note (optional)"
+        className="w-40 rounded-full border border-ink/20 bg-white px-4 py-2 text-sm focus:border-chili focus:outline-none"
+      />
       <button
         type="submit"
         disabled={isPending}

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, slugify } from "@/lib/require-admin";
+import { logAudit } from "@/lib/audit";
 
 const bundleSchema = z.object({
   name: z.string().min(2).max(150),
@@ -27,7 +28,7 @@ function parseItems(formData: FormData) {
 }
 
 export async function createBundle(formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const parsed = bundleSchema.parse({
     name: formData.get("name"),
     description: formData.get("description"),
@@ -42,7 +43,7 @@ export async function createBundle(formData: FormData) {
   const existing = await prisma.bundle.findUnique({ where: { slug } });
   if (existing) slug = `${slug}-${Date.now().toString(36)}`;
 
-  await prisma.bundle.create({
+  const created = await prisma.bundle.create({
     data: {
       name: parsed.name,
       slug,
@@ -54,6 +55,14 @@ export async function createBundle(formData: FormData) {
     },
   });
 
+  await logAudit({
+    actorEmail: session.user.email ?? "unknown",
+    action: "bundle.create",
+    entityType: "Bundle",
+    entityId: created.id,
+    after: { name: created.name, price: created.price },
+  });
+
   revalidatePath("/admin/bundles");
   revalidatePath("/deals");
   revalidatePath("/");
@@ -61,7 +70,7 @@ export async function createBundle(formData: FormData) {
 }
 
 export async function updateBundle(bundleId: string, formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const parsed = bundleSchema.parse({
     name: formData.get("name"),
     description: formData.get("description"),
@@ -71,6 +80,8 @@ export async function updateBundle(bundleId: string, formData: FormData) {
   });
   const items = parseItems(formData);
   if (items.length === 0) throw new Error("Select at least one product for this bundle");
+
+  const before = await prisma.bundle.findUniqueOrThrow({ where: { id: bundleId } });
 
   await prisma.$transaction([
     prisma.bundleItem.deleteMany({ where: { bundleId } }),
@@ -87,6 +98,15 @@ export async function updateBundle(bundleId: string, formData: FormData) {
     }),
   ]);
 
+  await logAudit({
+    actorEmail: session.user.email ?? "unknown",
+    action: "bundle.update",
+    entityType: "Bundle",
+    entityId: bundleId,
+    before: { name: before.name, price: before.price },
+    after: { name: parsed.name, price: Math.round(parsed.price * 100) },
+  });
+
   revalidatePath("/admin/bundles");
   revalidatePath("/deals");
   revalidatePath("/");
@@ -94,8 +114,18 @@ export async function updateBundle(bundleId: string, formData: FormData) {
 }
 
 export async function deleteBundle(bundleId: string) {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const before = await prisma.bundle.findUniqueOrThrow({ where: { id: bundleId } });
   await prisma.bundle.delete({ where: { id: bundleId } });
+
+  await logAudit({
+    actorEmail: session.user.email ?? "unknown",
+    action: "bundle.delete",
+    entityType: "Bundle",
+    entityId: bundleId,
+    before: { name: before.name },
+  });
+
   revalidatePath("/admin/bundles");
   revalidatePath("/deals");
   revalidatePath("/");

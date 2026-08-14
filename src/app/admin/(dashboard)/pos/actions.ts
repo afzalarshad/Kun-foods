@@ -33,8 +33,8 @@ export async function createPosOrder(input: PosOrderInput) {
   try {
     const order = await createOrder({
       ...parsed,
-      address: parsed.address || "In-store purchase",
-      city: parsed.city || "Walk-in",
+      address: parsed.address ?? "",
+      city: parsed.city ?? "",
       source: "pos",
     });
     return { orderNumber: order.orderNumber };

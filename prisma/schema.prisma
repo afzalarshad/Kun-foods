@@ -18,23 +18,29 @@ model Category {
 }
 
 model Product {
-  id             String       @id @default(cuid())
+  id             String              @id @default(cuid())
   name           String
-  slug           String       @unique
+  slug           String              @unique
   description    String
   price          Int // price in smallest currency unit (paisa)
   compareAtPrice Int?
+  costPrice      Int? // paisa; for margin/inventory valuation reporting
+  sku            String?             @unique
+  barcode        String?             @unique
+  supplier       String?
+  reorderLevel   Int? // dashboard flags stock at/below this as low
   images         String // JSON-encoded array of image URLs/emojis
   badge          String? // e.g. "Bestseller", "New", "Sale"
   weightLabel    String? // e.g. "500g", "1kg"
-  stock          Int          @default(100)
-  featured       Boolean      @default(false)
+  stock          Int                 @default(100)
+  featured       Boolean             @default(false)
   categoryId     String
-  category       Category     @relation(fields: [categoryId], references: [id])
+  category       Category            @relation(fields: [categoryId], references: [id])
   orderItems     OrderItem[]
   bundleItems    BundleItem[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  movements      InventoryMovement[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 }
 
 model Bundle {
@@ -75,54 +81,199 @@ model Coupon {
 }
 
 model Customer {
-  id        String   @id @default(cuid())
+  id        String            @id @default(cuid())
   name      String
-  email     String   @unique
+  email     String            @unique
   phone     String
   address   String?
   city      String?
+  source    String? // how they found us / acquisition channel, free text
   orders    Order[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  tags      CustomerTag[]
+  notes     CustomerNote[]
+  tickets   SupportTicket[]
+  addresses CustomerAddress[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model CustomerAddress {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  label      String // e.g. "Home", "Office"
+  address    String
+  city       String
+  postalCode String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model CustomerTag {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tag        String
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, tag])
+}
+
+model CustomerNote {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  note        String
+  authorEmail String?
+  createdAt   DateTime @default(now())
 }
 
 model Order {
-  id            String      @id @default(cuid())
-  orderNumber   String      @unique
-  customerId    String?
-  customer      Customer?   @relation(fields: [customerId], references: [id])
-  customerName  String
-  email         String
-  phone         String
-  address       String
-  city          String
-  postalCode    String?
-  notes         String?
-  paymentMethod String // "cod" | "card" | "cash"
-  status        String      @default("pending") // pending | processing | shipped | delivered | cancelled
-  source        String      @default("web") // "web" | "pos"
-  subtotal      Int
-  discount      Int         @default(0)
-  couponId      String?
-  coupon        Coupon?     @relation(fields: [couponId], references: [id])
-  shipping      Int
-  total         Int
-  items         OrderItem[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id                 String            @id @default(cuid())
+  orderNumber        String            @unique
+  customerId         String?
+  customer           Customer?         @relation(fields: [customerId], references: [id])
+  customerName       String
+  email              String
+  phone              String
+  address            String
+  city               String
+  postalCode         String?
+  notes              String?
+  paymentMethod      String // "cod" | "card" | "cash"
+  status             String            @default("pending") // pending | processing | shipped | delivered | cancelled
+  cancellationReason String?
+  priority           String            @default("normal") // low | normal | high | urgent
+  assignedTo         String? // staff email responsible for fulfilling this order
+  source             String            @default("web") // "web" | "pos"
+  subtotal           Int
+  discount           Int               @default(0)
+  couponId           String?
+  coupon             Coupon?           @relation(fields: [couponId], references: [id])
+  shipping           Int
+  total              Int
+  items              OrderItem[]
+  statusEvents       OrderStatusEvent[]
+  returns            Return[]
+  payments           Payment[]
+  shipment           Shipment?
+  tickets            SupportTicket[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
+  id        String   @id @default(cuid())
   orderId   String
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId String?
   product   Product? @relation(fields: [productId], references: [id])
   bundleId  String?
-  bundle    Bundle? @relation(fields: [bundleId], references: [id])
+  bundle    Bundle?  @relation(fields: [bundleId], references: [id])
   name      String
   price     Int
   quantity  Int
+}
+
+model OrderStatusEvent {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status      String
+  note        String?
+  actorEmail  String?
+  createdAt   DateTime @default(now())
+}
+
+model Return {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  reason     String
+  status     String   @default("requested") // requested | approved | rejected | received | refunded
+  notes      String?
+  actorEmail String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model InventoryMovement {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type       String // "sale" | "return" | "adjustment" | "restock"
+  quantity   Int // signed: negative = stock decreased, positive = stock increased
+  reason     String?
+  orderId    String?
+  actorEmail String?
+  createdAt  DateTime @default(now())
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  orderId        String
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount         Int
+  method         String // "cod" | "cash" | "card" | "bank_transfer" | "other"
+  status         String   @default("pending") // pending | paid | refunded | partially_refunded
+  transactionRef String?
+  notes          String?
+  actorEmail     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Shipment {
+  id                String    @id @default(cuid())
+  orderId           String    @unique
+  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  courier           String // "leopards" | "tcs" | "postex" | "manual"
+  trackingNumber    String?
+  status            String    @default("pending") // pending | booked | picked_up | in_transit | delivered | returned
+  codAmount         Int?
+  weightGrams       Int?
+  labelGeneratedAt  DateTime?
+  actorEmail        String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model SupportTicket {
+  id           String          @id @default(cuid())
+  ticketNumber String          @unique
+  customerId   String?
+  customer     Customer?       @relation(fields: [customerId], references: [id])
+  orderId      String?
+  order        Order?          @relation(fields: [orderId], references: [id])
+  subject      String
+  category     String // order | payment | delivery | return | refund | product | complaint | general
+  priority     String          @default("normal") // low | normal | high | urgent
+  status       String          @default("open") // open | pending | in_progress | waiting_on_customer | resolved | closed
+  assignedTo   String?
+  messages     TicketMessage[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model TicketMessage {
+  id          String        @id @default(cuid())
+  ticketId    String
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorEmail String?
+  authorType  String // "staff" | "customer" | "system"
+  message     String
+  internal    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+}
+
+model ShippingZone {
+  id        String   @id @default(cuid())
+  city      String   @unique
+  rate      Int // paisa
+  freeAbove Int? // paisa; order subtotal (after discount) at or above this ships free. null = never auto-free
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model AdminUser {
@@ -130,5 +281,18 @@ model AdminUser {
   email        String   @unique
   passwordHash String
   name         String
+  role         String   @default("admin") // "admin" | "staff" | "pos"
+  active       Boolean  @default(true)
   createdAt    DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorEmail String
+  action     String // e.g. "product.create", "order.status_update"
+  entityType String
+  entityId   String?
+  before     String? // JSON snapshot
+  after      String? // JSON snapshot
+  createdAt  DateTime @default(now())
 }
