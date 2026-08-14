@@ -30,15 +30,39 @@ export async function createReturn(orderId: string, formData: FormData) {
 export async function updateReturnStatus(returnId: string, orderId: string, formData: FormData) {
   const session = await requireAdmin();
   const status = z.enum(returnStatuses).parse(formData.get("status"));
+  const actorEmail = session.user.email ?? "unknown";
   const before = await prisma.return.findUniqueOrThrow({ where: { id: returnId } });
 
   await prisma.return.update({
     where: { id: returnId },
-    data: { status, actorEmail: session.user.email ?? "unknown" },
+    data: { status, actorEmail },
   });
 
+  // Restock once, the moment an item is physically back in the warehouse.
+  if (status === "received" && before.status !== "received") {
+    const [order, items] = await Promise.all([
+      prisma.order.findUniqueOrThrow({ where: { id: orderId }, select: { orderNumber: true } }),
+      prisma.orderItem.findMany({ where: { orderId, productId: { not: null } } }),
+    ]);
+    await prisma.$transaction(
+      items.flatMap((item) => [
+        prisma.product.update({ where: { id: item.productId! }, data: { stock: { increment: item.quantity } } }),
+        prisma.inventoryMovement.create({
+          data: {
+            productId: item.productId!,
+            type: "return",
+            quantity: item.quantity,
+            reason: `Return received for order ${order.orderNumber}`,
+            orderId,
+            actorEmail,
+          },
+        }),
+      ])
+    );
+  }
+
   await logAudit({
-    actorEmail: session.user.email ?? "unknown",
+    actorEmail,
     action: "return.status_update",
     entityType: "Return",
     entityId: returnId,
@@ -47,6 +71,7 @@ export async function updateReturnStatus(returnId: string, orderId: string, form
   });
 
   revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath("/admin/inventory");
 }
 
 const priorityEnum = z.enum(["low", "normal", "high", "urgent"]);

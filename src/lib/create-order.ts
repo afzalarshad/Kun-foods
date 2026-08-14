@@ -152,6 +152,15 @@ export async function createOrder(input: CreateOrderInput) {
 
     for (const [productId, qty] of neededStock) {
       await tx.product.update({ where: { id: productId }, data: { stock: { decrement: qty } } });
+      await tx.inventoryMovement.create({
+        data: {
+          productId,
+          type: "sale",
+          quantity: -qty,
+          reason: `Order ${created.orderNumber}`,
+          orderId: created.id,
+        },
+      });
     }
 
     if (couponId) {

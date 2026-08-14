@@ -131,6 +131,12 @@ src/store/cart.ts               Zustand cart store
   (`OrderStatusEvent`) instead of overwriting a single field, support an
   optional note and a priority/assigned-staff field, and returns/refunds
   are tracked per order at `/admin/orders/[id]`.
+- **Inventory** (`/admin/inventory`): every stock change — sales, returns
+  received back into the warehouse, and manual adjustments — is logged as
+  an `InventoryMovement` with who/what/why. A low-stock widget (based on
+  each product's optional reorder level) surfaces on both the dashboard and
+  the inventory page, and a manual "Adjust stock" form handles damage,
+  recounts, and new stock received from a supplier.
 
 ## Payments
 

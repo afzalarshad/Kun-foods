@@ -55,6 +55,12 @@ export default async function AdminProductsPage() {
                 <td className="px-6 py-3">
                   <div className="flex justify-end gap-3">
                     <Link
+                      href={`/admin/inventory?product=${p.id}`}
+                      className="font-medium text-ink-soft hover:underline"
+                    >
+                      History
+                    </Link>
+                    <Link
                       href={`/admin/products/${p.id}/edit`}
                       className="font-medium text-basil hover:underline"
                     >
