@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  image       String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+}
+
+model Product {
+  id            String      @id @default(cuid())
+  name          String
+  slug          String      @unique
+  description   String
+  price         Int // price in smallest currency unit (paisa)
+  compareAtPrice Int?
+  images        String // JSON-encoded array of image URLs/emojis
+  badge         String? // e.g. "Bestseller", "New", "Sale"
+  weightLabel   String? // e.g. "500g", "1kg"
+  stock         Int         @default(100)
+  featured      Boolean     @default(false)
+  categoryId    String
+  category      Category    @relation(fields: [categoryId], references: [id])
+  orderItems    OrderItem[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique
+  customerName  String
+  email         String
+  phone         String
+  address       String
+  city          String
+  postalCode    String?
+  notes         String?
+  paymentMethod String // "cod" | "card"
+  status        String      @default("pending") // pending | processing | shipped | delivered | cancelled
+  subtotal      Int
+  shipping      Int
+  total         Int
+  items         OrderItem[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  name      String
+  price     Int
+  quantity  Int
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+}
