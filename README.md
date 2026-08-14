@@ -157,6 +157,11 @@ src/store/cart.ts               Zustand cart store
   open → pending → in progress → waiting on customer → resolved → closed.
   Tickets are linked to the customer record, shown on the customer detail
   page, and surfaced (with an open-ticket count) in the CRM quick-view.
+- **Reports** (`/admin/reports`): revenue, order count, average order
+  value, and new customers over a 7/30/90-day window, with a daily sales
+  chart, top products by revenue, revenue by category, order-status
+  breakdown, and payment-method breakdown — all computed live from the
+  same orders/payments data, no separate analytics service needed.
 
 ## Payments
 

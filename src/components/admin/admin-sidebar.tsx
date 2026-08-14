@@ -8,6 +8,7 @@ type NavLink = { href: string; label: string; icon: string; exact?: boolean; rol
 
 const links: NavLink[] = [
   { href: "/admin", label: "Dashboard", icon: "📊", exact: true, roles: ["admin", "staff"] },
+  { href: "/admin/reports", label: "Reports", icon: "📈", roles: ["admin", "staff"] },
   { href: "/admin/pos", label: "POS", icon: "🧾" },
   { href: "/admin/products", label: "Products", icon: "🌶️", roles: ["admin", "staff"] },
   { href: "/admin/inventory", label: "Inventory", icon: "📋", roles: ["admin", "staff"] },
