@@ -64,7 +64,8 @@ export function ProductCard({ product }: { product: ProductCardType }) {
         <button
           onClick={() =>
             addItem({
-              productId: product.id,
+              type: "product",
+              id: product.id,
               name: product.name,
               slug: product.slug,
               price: product.price,

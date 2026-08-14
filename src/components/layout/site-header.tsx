@@ -31,7 +31,10 @@ export async function SiteHeader() {
           <Link href="/collections/all" className="font-medium hover:text-chili">
             All Products
           </Link>
-          {categories.slice(0, 5).map((cat) => (
+          <Link href="/deals" className="font-medium hover:text-chili">
+            Deals
+          </Link>
+          {categories.slice(0, 4).map((cat) => (
             <Link
               key={cat.id}
               href={`/collections/${cat.slug}`}
@@ -58,6 +61,9 @@ export async function SiteHeader() {
             <nav className="absolute right-0 z-40 mt-2 flex w-56 flex-col gap-1 rounded-2xl border border-ink/10 bg-cream p-3 shadow-xl">
               <Link href="/collections/all" className="rounded-lg px-3 py-2 hover:bg-cream-dark">
                 All Products
+              </Link>
+              <Link href="/deals" className="rounded-lg px-3 py-2 hover:bg-cream-dark">
+                Deals
               </Link>
               {categories.map((cat) => (
                 <Link

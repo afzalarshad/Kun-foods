@@ -6,6 +6,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { AddToCart } from "@/components/product/add-to-cart";
 import { getAllProducts, getProductBySlug, getRelatedProducts } from "@/lib/data";
 import { formatPrice } from "@/lib/format";
+import { whatsappLink } from "@/components/whatsapp-button";
 
 export const revalidate = 60;
 
@@ -38,6 +39,9 @@ export default async function ProductPage({
   if (!product) notFound();
 
   const related = await getRelatedProducts(product.categorySlug, product.slug);
+  const waLink = whatsappLink(
+    `Hi! I'd like to order ${product.name} (${formatPrice(product.price)}) from Kun Foods.`
+  );
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:py-14">
@@ -114,6 +118,16 @@ export default async function ProductPage({
               weightLabel={product.weightLabel}
               inStock={product.stock > 0}
             />
+            {waLink && (
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 flex items-center justify-center gap-2 rounded-full border-2 border-[#25D366] py-3 font-heading font-semibold text-[#128C7E] hover:bg-[#25D366]/10"
+              >
+                💬 Order via WhatsApp
+              </a>
+            )}
           </div>
 
           <dl className="mt-10 grid grid-cols-2 gap-4 border-t border-ink/10 pt-6 text-sm">

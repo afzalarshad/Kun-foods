@@ -18,27 +18,79 @@ model Category {
 }
 
 model Product {
-  id            String      @id @default(cuid())
-  name          String
-  slug          String      @unique
-  description   String
-  price         Int // price in smallest currency unit (paisa)
+  id             String       @id @default(cuid())
+  name           String
+  slug           String       @unique
+  description    String
+  price          Int // price in smallest currency unit (paisa)
   compareAtPrice Int?
-  images        String // JSON-encoded array of image URLs/emojis
-  badge         String? // e.g. "Bestseller", "New", "Sale"
-  weightLabel   String? // e.g. "500g", "1kg"
-  stock         Int         @default(100)
-  featured      Boolean     @default(false)
-  categoryId    String
-  category      Category    @relation(fields: [categoryId], references: [id])
-  orderItems    OrderItem[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  images         String // JSON-encoded array of image URLs/emojis
+  badge          String? // e.g. "Bestseller", "New", "Sale"
+  weightLabel    String? // e.g. "500g", "1kg"
+  stock          Int          @default(100)
+  featured       Boolean      @default(false)
+  categoryId     String
+  category       Category     @relation(fields: [categoryId], references: [id])
+  orderItems     OrderItem[]
+  bundleItems    BundleItem[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Bundle {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  description String
+  image       String // emoji
+  price       Int // bundle price in paisa (should be less than sum of components)
+  active      Boolean      @default(true)
+  items       BundleItem[]
+  orderItems  OrderItem[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model BundleItem {
+  id        String  @id @default(cuid())
+  bundleId  String
+  bundle    Bundle  @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int     @default(1)
+}
+
+model Coupon {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  type        String // "percentage" | "fixed"
+  value       Int // 1-100 for percentage, paisa amount for fixed
+  minSubtotal Int       @default(0)
+  usageLimit  Int?
+  usedCount   Int       @default(0)
+  active      Boolean   @default(true)
+  expiresAt   DateTime?
+  orders      Order[]
+  createdAt   DateTime  @default(now())
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String
+  address   String?
+  city      String?
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Order {
   id            String      @id @default(cuid())
   orderNumber   String      @unique
+  customerId    String?
+  customer      Customer?   @relation(fields: [customerId], references: [id])
   customerName  String
   email         String
   phone         String
@@ -46,9 +98,13 @@ model Order {
   city          String
   postalCode    String?
   notes         String?
-  paymentMethod String // "cod" | "card"
+  paymentMethod String // "cod" | "card" | "cash"
   status        String      @default("pending") // pending | processing | shipped | delivered | cancelled
+  source        String      @default("web") // "web" | "pos"
   subtotal      Int
+  discount      Int         @default(0)
+  couponId      String?
+  coupon        Coupon?     @relation(fields: [couponId], references: [id])
   shipping      Int
   total         Int
   items         OrderItem[]
@@ -60,8 +116,10 @@ model OrderItem {
   id        String  @id @default(cuid())
   orderId   String
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product @relation(fields: [productId], references: [id])
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+  bundleId  String?
+  bundle    Bundle? @relation(fields: [bundleId], references: [id])
   name      String
   price     Int
   quantity  Int

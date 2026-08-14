@@ -6,8 +6,12 @@ import { signOut } from "next-auth/react";
 
 const links = [
   { href: "/admin", label: "Dashboard", icon: "📊", exact: true },
+  { href: "/admin/pos", label: "POS", icon: "🧾" },
   { href: "/admin/products", label: "Products", icon: "🌶️" },
+  { href: "/admin/bundles", label: "Bundles", icon: "🎁" },
+  { href: "/admin/coupons", label: "Coupons", icon: "🏷️" },
   { href: "/admin/orders", label: "Orders", icon: "📦" },
+  { href: "/admin/customers", label: "Customers", icon: "👥" },
 ];
 
 export function AdminSidebar({ userEmail }: { userEmail: string }) {

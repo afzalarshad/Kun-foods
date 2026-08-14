@@ -47,7 +47,7 @@ export function AddToCart({
       <button
         disabled={!inStock}
         onClick={() => {
-          addItem({ productId, name, slug, price, image, weightLabel }, quantity);
+          addItem({ type: "product", id: productId, name, slug, price, image, weightLabel }, quantity);
           setAdded(true);
           setTimeout(() => setAdded(false), 1800);
         }}
