@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 import { createAdminNotification } from "@/lib/admin-notifications";
+import { getDefaultWarehouse, incrementWarehouseStock } from "@/lib/warehouse-stock";
 
 const returnStatuses = ["requested", "approved", "rejected", "received", "refunded"] as const;
 
@@ -49,24 +50,30 @@ export async function updateReturnStatus(returnId: string, orderId: string, form
   // Restock once, the moment an item is physically back in the warehouse.
   if (status === "received" && before.status !== "received") {
     const [order, items] = await Promise.all([
-      prisma.order.findUniqueOrThrow({ where: { id: orderId }, select: { orderNumber: true } }),
+      prisma.order.findUniqueOrThrow({ where: { id: orderId }, select: { orderNumber: true, warehouseId: true } }),
       prisma.orderItem.findMany({ where: { orderId, productId: { not: null } } }),
     ]);
-    await prisma.$transaction(
-      items.flatMap((item) => [
-        prisma.product.update({ where: { id: item.productId! }, data: { stock: { increment: item.quantity } } }),
-        prisma.inventoryMovement.create({
+    const restockWarehouseId = order.warehouseId ?? (await getDefaultWarehouse()).id;
+    await prisma.$transaction(async (tx) => {
+      for (const item of items) {
+        await incrementWarehouseStock(tx, {
+          productId: item.productId!,
+          warehouseId: restockWarehouseId,
+          quantity: item.quantity,
+        });
+        await tx.inventoryMovement.create({
           data: {
             productId: item.productId!,
+            warehouseId: restockWarehouseId,
             type: "return",
             quantity: item.quantity,
             reason: `Return received for order ${order.orderNumber}`,
             orderId,
             actorEmail,
           },
-        }),
-      ])
-    );
+        });
+      }
+    });
   }
 
   await logAudit({

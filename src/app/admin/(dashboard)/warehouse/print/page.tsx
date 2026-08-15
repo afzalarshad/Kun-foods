@@ -2,11 +2,16 @@ import { prisma } from "@/lib/prisma";
 import { requireAnyPermission } from "@/lib/require-admin";
 import { PrintButton } from "@/components/admin/print-button";
 
-export default async function WarehousePickListPrintPage() {
+export default async function WarehousePickListPrintPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ warehouse?: string }>;
+}) {
   await requireAnyPermission(["warehouse.pick", "warehouse.pack"]);
+  const { warehouse: warehouseFilter } = await searchParams;
 
   const orders = await prisma.order.findMany({
-    where: { status: "processing" },
+    where: { status: "processing", ...(warehouseFilter ? { warehouseId: warehouseFilter } : {}) },
     include: {
       items: { include: { product: { select: { sku: true, barcode: true } } } },
     },

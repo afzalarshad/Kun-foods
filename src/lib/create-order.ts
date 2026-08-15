@@ -5,6 +5,7 @@ import { notifyOrderCreated } from "@/lib/notifications";
 import { notifyLowStockIfNeeded } from "@/lib/admin-notifications";
 import { computePromotionsForCart } from "@/lib/promotions";
 import { dispatchWebhookEvent } from "@/lib/webhooks";
+import { resolveFulfillmentWarehouse, decrementWarehouseStock } from "@/lib/warehouse-stock";
 
 export type CreateOrderInput = {
   customerName: string;
@@ -134,6 +135,15 @@ export async function createOrder(input: CreateOrderInput) {
   const orderPaymentMethod = distinctMethods.size > 1 ? "split" : (input.payments?.[0]?.method ?? input.paymentMethod);
 
   const order = await prisma.$transaction(async (tx) => {
+    // Orders aren't split across locations, so the whole order must be fully
+    // coverable by one warehouse's stock (see resolveFulfillmentWarehouse).
+    const fulfillmentWarehouse = await resolveFulfillmentWarehouse(tx, city, neededStock);
+    if (!fulfillmentWarehouse) {
+      throw new OrderError(
+        "Not enough stock at any single fulfillment location for this combination of items"
+      );
+    }
+
     const customer = await tx.customer.upsert({
       where: { email: input.email },
       update: { name: input.customerName, phone: input.phone, address, city },
@@ -167,6 +177,7 @@ export async function createOrder(input: CreateOrderInput) {
         promotionsJson: appliedPromotions.length > 0 ? JSON.stringify(appliedPromotions) : null,
         shipping,
         total,
+        warehouseId: fulfillmentWarehouse.id,
         items: {
           create: input.items.map((item) => {
             if (item.type === "product") {
@@ -182,11 +193,13 @@ export async function createOrder(input: CreateOrderInput) {
     });
 
     for (const [productId, qty] of neededStock) {
-      const updated = await tx.product.update({ where: { id: productId }, data: { stock: { decrement: qty } } });
+      await decrementWarehouseStock(tx, { productId, warehouseId: fulfillmentWarehouse.id, quantity: qty });
+      const updated = await tx.product.findUniqueOrThrow({ where: { id: productId } });
       stockUpdates.push(updated);
       await tx.inventoryMovement.create({
         data: {
           productId,
+          warehouseId: fulfillmentWarehouse.id,
           type: "sale",
           quantity: -qty,
           reason: `Order ${created.orderNumber}`,

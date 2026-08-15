@@ -12,10 +12,13 @@ export function ProductForm({
   action,
   categories,
   product,
+  defaultWarehouseStock,
 }: {
   action: (formData: FormData) => void;
   categories: Category[];
   product?: Product;
+  /** Stock held at the default warehouse specifically — editing here only ever moves that one location's pool. */
+  defaultWarehouseStock?: number;
 }) {
   const [selectedEmoji, setSelectedEmoji] = useState(
     product ? (JSON.parse(product.images)[0] as string) : EMOJI_OPTIONS[0]
@@ -97,15 +100,23 @@ export function ProductForm({
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium">Stock quantity</label>
+          <label className="mb-1.5 block text-sm font-medium">
+            {product ? "Stock at default warehouse" : "Initial stock"}
+          </label>
           <input
             type="number"
             name="stock"
             required
             min={0}
-            defaultValue={product?.stock ?? 100}
+            defaultValue={product ? defaultWarehouseStock ?? product.stock : 100}
             className="w-full rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
           />
+          {product && (
+            <p className="mt-1 text-xs text-ink-soft">
+              Total across all warehouses: {product.stock}. To adjust stock at a non-default
+              warehouse, use Inventory → Adjust stock instead.
+            </p>
+          )}
         </div>
       </div>
 

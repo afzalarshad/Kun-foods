@@ -42,8 +42,53 @@ model Product {
   bundleItems    BundleItem[]
   movements      InventoryMovement[]
   promotions     Promotion[]
+  warehouseStock WarehouseStock[]
+  stockTransfers StockTransfer[]
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
+}
+
+model Warehouse {
+  id            String              @id @default(cuid())
+  name          String
+  code          String              @unique
+  city          String
+  address       String?
+  isDefault     Boolean             @default(false)
+  active        Boolean             @default(true)
+  stockLevels   WarehouseStock[]
+  orders        Order[]
+  movements     InventoryMovement[]
+  transfersFrom StockTransfer[]     @relation("TransferFrom")
+  transfersTo   StockTransfer[]     @relation("TransferTo")
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model WarehouseStock {
+  id          String    @id @default(cuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  quantity    Int       @default(0)
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([productId, warehouseId])
+}
+
+model StockTransfer {
+  id              String    @id @default(cuid())
+  productId       String
+  product         Product   @relation(fields: [productId], references: [id])
+  quantity        Int
+  fromWarehouseId String
+  fromWarehouse   Warehouse @relation("TransferFrom", fields: [fromWarehouseId], references: [id])
+  toWarehouseId   String
+  toWarehouse     Warehouse @relation("TransferTo", fields: [toWarehouseId], references: [id])
+  reason          String?
+  actorEmail      String?
+  createdAt       DateTime  @default(now())
 }
 
 model Bundle {
@@ -166,11 +211,13 @@ model Order {
   postalCode         String?
   notes              String?
   paymentMethod      String // "cod" | "card" | "cash"
-  status             String            @default("pending") // pending | processing | shipped | delivered | cancelled
+  status             String            @default("pending") // pending | processing | packed | shipped | delivered | cancelled
   cancellationReason String?
   priority           String            @default("normal") // low | normal | high | urgent
   assignedTo         String? // staff email responsible for fulfilling this order
   source             String            @default("web") // "web" | "pos"
+  warehouseId        String? // which physical location is fulfilling this order
+  warehouse          Warehouse?        @relation(fields: [warehouseId], references: [id])
   subtotal           Int
   discount           Int               @default(0)
   couponId           String?
@@ -226,15 +273,17 @@ model Return {
 }
 
 model InventoryMovement {
-  id         String   @id @default(cuid())
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  type       String // "sale" | "return" | "adjustment" | "restock"
-  quantity   Int // signed: negative = stock decreased, positive = stock increased
-  reason     String?
-  orderId    String?
-  actorEmail String?
-  createdAt  DateTime @default(now())
+  id          String     @id @default(cuid())
+  productId   String
+  product     Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouseId String?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+  type        String // "sale" | "return" | "adjustment" | "restock" | "transfer_out" | "transfer_in"
+  quantity    Int // signed: negative = stock decreased, positive = stock increased
+  reason      String?
+  orderId     String?
+  actorEmail  String?
+  createdAt   DateTime   @default(now())
 }
 
 model Payment {

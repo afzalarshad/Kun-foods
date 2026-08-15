@@ -26,6 +26,7 @@ export default async function AdminOrderDetailPage({
         returns: { orderBy: { createdAt: "desc" } },
         payments: { orderBy: { createdAt: "desc" } },
         shipment: true,
+        warehouse: { select: { name: true, city: true } },
       },
     }),
     getSlaThresholds(),
@@ -85,6 +86,11 @@ export default async function AdminOrderDetailPage({
             {order.postalCode ? `, ${order.postalCode}` : ""}
           </p>
           {order.notes && <p className="mt-2 text-sm italic text-ink-soft">&ldquo;{order.notes}&rdquo;</p>}
+          {order.warehouse && (
+            <p className="mt-2 text-xs text-ink-soft">
+              Fulfilling from <span className="font-semibold text-ink">{order.warehouse.name}</span> ({order.warehouse.city})
+            </p>
+          )}
         </div>
       </div>
 

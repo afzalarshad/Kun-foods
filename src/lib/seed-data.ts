@@ -248,11 +248,17 @@ export async function seedDatabase(
     });
   }
 
+  const defaultWarehouse = await prisma.warehouse.upsert({
+    where: { code: "MAIN" },
+    update: {},
+    create: { name: "Main Warehouse", code: "MAIN", city: "Karachi", isDefault: true },
+  });
+
   for (const p of products) {
     const category = await prisma.category.findUniqueOrThrow({
       where: { slug: p.category },
     });
-    await prisma.product.upsert({
+    const product = await prisma.product.upsert({
       where: { slug: p.slug },
       update: {
         name: p.name,
@@ -277,6 +283,11 @@ export async function seedDatabase(
         featured: p.featured ?? false,
         categoryId: category.id,
       },
+    });
+    await prisma.warehouseStock.upsert({
+      where: { productId_warehouseId: { productId: product.id, warehouseId: defaultWarehouse.id } },
+      update: {},
+      create: { productId: product.id, warehouseId: defaultWarehouse.id, quantity: product.stock },
     });
   }
 

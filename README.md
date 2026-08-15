@@ -285,19 +285,42 @@ src/store/cart.ts               Zustand cart store
     with real credentials yet, so tracking numbers are still entered by
     hand, exactly as before.
 - **Warehouse pick & pack** (`/admin/warehouse`): confirmed orders enter a
-  pick queue sorted by priority. Each order has a scan screen — type or
-  scan a barcode/SKU (works with any USB/Bluetooth scanner acting as a
-  keyboard, or manual entry on a phone) to check off that unit against the
-  order; over-scanning or unmatched codes are rejected, and "mark packed"
-  stays disabled until every line item is fully picked, then moves the
-  order to **packed** (not shipped — see below) with a timestamped audit
-  trail. A **"Print pick list"** button on the queue generates a single
-  printable sheet for every order currently waiting: a consolidated
-  pick-total per SKU (so a picker can grab all of one item at once) followed
-  by a per-order breakdown. The same rules are enforced by a documented
-  `/api/warehouse/*` API surface (product lookup by barcode/SKU, pick queue,
-  scan, mark-packed) for a future Android/handheld scanner app — the web UI
-  keeps working with or without it.
+  pick queue sorted by priority, filterable by warehouse once more than one
+  exists. Each order has a scan screen — type or scan a barcode/SKU (works
+  with any USB/Bluetooth scanner acting as a keyboard, or manual entry on a
+  phone) to check off that unit against the order; over-scanning or
+  unmatched codes are rejected, and "mark packed" stays disabled until every
+  line item is fully picked, then moves the order to **packed** (not
+  shipped — see below) with a timestamped audit trail. A **"Print pick
+  list"** button on the queue generates a single printable sheet for every
+  order currently waiting: a consolidated pick-total per SKU (so a picker
+  can grab all of one item at once) followed by a per-order breakdown. The
+  same rules are enforced by a documented `/api/warehouse/*` API surface
+  (product lookup by barcode/SKU, pick queue, scan, mark-packed) for a
+  future Android/handheld scanner app — the web UI keeps working with or
+  without it.
+- **Multi-warehouse inventory** (`/admin/warehouses`): stock is tracked
+  per physical location, not as one global number — each warehouse holds
+  its own `WarehouseStock` pool per product, and `Product.stock` is kept as
+  a live cross-warehouse total for anything that only needs "is this in
+  stock at all" (storefront, POS, low-stock alerts). Add/edit warehouses
+  (name, city, active, and which one is the default fallback), and
+  **transfer stock** between them with a full before/after audit trail. New
+  orders are automatically assigned to whichever warehouse can fully cover
+  every line item — preferring one whose city matches the delivery address,
+  falling back to the default warehouse — and that location's pool (not the
+  global total) is what actually gets decremented; if no single location
+  can cover the whole order it's rejected with a clear error rather than
+  silently over-selling one location's shelf. Returns restock the order's
+  original fulfilling warehouse. The Inventory page shows a per-warehouse
+  breakdown table alongside the existing movement ledger and manual
+  adjustment form (now warehouse-scoped), and the product edit form's stock
+  field only ever moves the default warehouse's pool — everything else goes
+  through Inventory or a transfer. Deleting a warehouse that still holds
+  stock is blocked; one with order history is deactivated instead of
+  removed, matching every other "safer delete" in this app. New
+  installs start with a single "Main Warehouse" holding all stock, so
+  nothing changes until a second location is actually added.
 - **Packed ≠ shipped**: finishing pick/pack moves an order to **packed**,
   not shipped — "shipped" previously fired the moment a warehouse staffer
   finished packing, before any courier had actually been booked, which made
