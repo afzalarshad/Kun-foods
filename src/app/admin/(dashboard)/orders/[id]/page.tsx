@@ -5,6 +5,8 @@ import { OrderStatusForm } from "@/components/admin/order-status-form";
 import { OrderMetaForm } from "@/components/admin/order-meta-form";
 import { OrderTimeline } from "@/components/admin/order-timeline";
 import { ReturnsPanel } from "@/components/admin/returns-panel";
+import { PaymentsPanel } from "@/components/admin/payments-panel";
+import { ShipmentPanel } from "@/components/admin/shipment-panel";
 
 export default async function AdminOrderDetailPage({
   params,
@@ -18,6 +20,8 @@ export default async function AdminOrderDetailPage({
       items: true,
       statusEvents: { orderBy: { createdAt: "desc" } },
       returns: { orderBy: { createdAt: "desc" } },
+      payments: { orderBy: { createdAt: "desc" } },
+      shipment: true,
     },
   });
   if (!order) notFound();
@@ -87,10 +91,17 @@ export default async function AdminOrderDetailPage({
         </div>
         {order.discount > 0 && (
           <div className="mt-1 flex justify-between text-sm text-basil-dark">
-            <span>Discount</span>
+            <span>Coupon discount</span>
             <span>−{formatPrice(order.discount)}</span>
           </div>
         )}
+        {order.promotionsJson &&
+          (JSON.parse(order.promotionsJson) as { id: string; name: string; discount: number }[]).map((p) => (
+            <div key={p.id} className="mt-1 flex justify-between text-sm text-saffron-dark">
+              <span>🎉 {p.name}</span>
+              <span>−{formatPrice(p.discount)}</span>
+            </div>
+          ))}
         <div className="mt-1 flex justify-between text-sm text-ink-soft">
           <span>Shipping</span>
           <span>{order.shipping === 0 ? "Free" : formatPrice(order.shipping)}</span>
@@ -114,6 +125,18 @@ export default async function AdminOrderDetailPage({
         <div className="mt-4">
           <OrderTimeline events={order.statusEvents} />
         </div>
+      </div>
+
+      <div className="mt-6">
+        <PaymentsPanel orderId={order.id} orderTotal={order.total} payments={order.payments} />
+      </div>
+
+      <div className="mt-6">
+        <ShipmentPanel
+          orderId={order.id}
+          shipment={order.shipment}
+          suggestedCod={order.paymentMethod === "cod" ? order.total : 0}
+        />
       </div>
 
       <div className="mt-6">

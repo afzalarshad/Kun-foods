@@ -1,20 +1,48 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { formatPrice } from "@/lib/format";
-import { DeleteProductButton } from "@/components/admin/delete-product-button";
+import { ProductsTable } from "@/components/admin/products-table";
 
-export default async function AdminProductsPage() {
-  const products = await prisma.product.findMany({
-    include: { category: true },
-    orderBy: { createdAt: "desc" },
-  });
+const PAGE_SIZE = 50;
+
+export default async function AdminProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; q?: string }>;
+}) {
+  const { page: pageParam, q } = await searchParams;
+  const page = Math.max(1, Number(pageParam) || 1);
+  const query = q?.trim();
+
+  const where = query
+    ? {
+        OR: [
+          { name: { contains: query, mode: "insensitive" as const } },
+          { sku: { contains: query, mode: "insensitive" as const } },
+          { barcode: { contains: query, mode: "insensitive" as const } },
+        ],
+      }
+    : {};
+
+  const [products, total] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      include: { category: true },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.product.count({ where }),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageQuery = (n: number) => `?${query ? `q=${encodeURIComponent(query)}&` : ""}page=${n}`;
 
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-heading text-3xl font-extrabold">Products</h1>
-          <p className="mt-1 text-ink-soft">{products.length} total</p>
+          <p className="mt-1 text-ink-soft">{total} total</p>
         </div>
         <Link
           href="/admin/products/new"
@@ -24,50 +52,45 @@ export default async function AdminProductsPage() {
         </Link>
       </div>
 
-      <div className="mt-8 overflow-x-auto rounded-3xl bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-ink/10 text-ink-soft">
-              <th className="px-6 py-3 font-medium">Product</th>
-              <th className="px-6 py-3 font-medium">Category</th>
-              <th className="px-6 py-3 font-medium">Price</th>
-              <th className="px-6 py-3 font-medium">Stock</th>
-              <th className="px-6 py-3 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((p) => (
-              <tr key={p.id} className="border-b border-ink/5 last:border-0">
-                <td className="px-6 py-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">{JSON.parse(p.images)[0]}</span>
-                    <div>
-                      <p className="font-medium">{p.name}</p>
-                      {p.featured && <p className="text-xs text-saffron-dark">Featured</p>}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-3 text-ink-soft">{p.category.name}</td>
-                <td className="px-6 py-3 font-medium">{formatPrice(p.price)}</td>
-                <td className="px-6 py-3">
-                  <span className={p.stock === 0 ? "font-medium text-chili" : ""}>{p.stock}</span>
-                </td>
-                <td className="px-6 py-3">
-                  <div className="flex justify-end gap-3">
-                    <Link
-                      href={`/admin/products/${p.id}/edit`}
-                      className="font-medium text-basil hover:underline"
-                    >
-                      Edit
-                    </Link>
-                    <DeleteProductButton productId={p.id} productName={p.name} />
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <form className="mt-6 flex gap-2" action="/admin/products">
+        <input
+          type="text"
+          name="q"
+          defaultValue={query}
+          placeholder="Search by name, SKU, or barcode…"
+          className="w-full max-w-sm rounded-full border border-ink/20 bg-white px-4 py-2.5 text-sm focus:border-chili focus:outline-none"
+        />
+        <button type="submit" className="rounded-full border border-ink/20 px-4 py-2.5 text-sm font-semibold hover:bg-cream-dark">
+          Search
+        </button>
+        {query && (
+          <Link href="/admin/products" className="rounded-full border border-ink/20 px-4 py-2.5 text-sm font-semibold hover:bg-cream-dark">
+            Clear
+          </Link>
+        )}
+      </form>
+
+      <div className="mt-6">
+        <ProductsTable products={products} />
       </div>
+
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-3 text-sm">
+          {page > 1 && (
+            <Link href={pageQuery(page - 1)} className="rounded-full border border-ink/20 px-4 py-1.5 hover:bg-cream-dark">
+              ← Newer
+            </Link>
+          )}
+          <span className="text-ink-soft">
+            Page {page} of {totalPages}
+          </span>
+          {page < totalPages && (
+            <Link href={pageQuery(page + 1)} className="rounded-full border border-ink/20 px-4 py-1.5 hover:bg-cream-dark">
+              Older →
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }

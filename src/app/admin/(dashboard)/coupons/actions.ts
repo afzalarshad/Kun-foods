@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 
 const couponSchema = z.object({
@@ -30,7 +30,7 @@ function parseForm(formData: FormData) {
 }
 
 export async function createCoupon(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("promotions.manage");
   const parsed = parseForm(formData);
 
   const created = await prisma.coupon.create({
@@ -58,7 +58,7 @@ export async function createCoupon(formData: FormData) {
 }
 
 export async function updateCoupon(couponId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("promotions.manage");
   const parsed = parseForm(formData);
   const before = await prisma.coupon.findUniqueOrThrow({ where: { id: couponId } });
 
@@ -89,7 +89,7 @@ export async function updateCoupon(couponId: string, formData: FormData) {
 }
 
 export async function deleteCoupon(couponId: string) {
-  const session = await requireAdmin();
+  const session = await requirePermission("promotions.manage");
   const before = await prisma.coupon.findUniqueOrThrow({ where: { id: couponId } });
   await prisma.coupon.delete({ where: { id: couponId } });
 

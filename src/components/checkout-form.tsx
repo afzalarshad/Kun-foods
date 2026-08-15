@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "@/store/cart";
 import { formatPrice } from "@/lib/format";
 import { getShippingForCity, type ShippingZonePreview } from "@/lib/shipping-preview";
 import { ProductImage } from "@/components/product/product-image";
 import { useHydrated } from "@/lib/use-hydrated";
+
+type AppliedPromotion = { id: string; name: string; discount: number };
 
 export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
   const router = useRouter();
@@ -17,14 +19,41 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [city, setCity] = useState(zones[0]?.city ?? "");
+  const [email, setEmail] = useState("");
 
   const [couponInput, setCouponInput] = useState("");
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [applyingCoupon, setApplyingCoupon] = useState(false);
 
-  const shipping = getShippingForCity(zones, city, subtotal() - couponDiscount);
-  const total = subtotal() - couponDiscount + shipping;
+  const [appliedPromotions, setAppliedPromotions] = useState<AppliedPromotion[]>([]);
+  const promoDiscount = appliedPromotions.reduce((sum, p) => sum + p.discount, 0);
+
+  const shipping = getShippingForCity(zones, city, subtotal() - couponDiscount - promoDiscount);
+  const total = subtotal() - couponDiscount - promoDiscount + shipping;
+
+  // Promotions apply automatically (no code) — recompute whenever the cart or email changes.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      if (!hydrated || items.length === 0) {
+        setAppliedPromotions([]);
+        return;
+      }
+      fetch("/api/promotions/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: items.map((i) => ({ type: i.type, id: i.id, quantity: i.quantity })),
+          email: email.includes("@") ? email : undefined,
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => setAppliedPromotions(data.applied ?? []))
+        .catch(() => setAppliedPromotions([]));
+    }, 350);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, JSON.stringify(items.map((i) => [i.id, i.quantity])), email]);
 
   async function handleApplyCoupon() {
     if (!couponInput.trim()) return;
@@ -130,6 +159,8 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
                 type="email"
                 name="email"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email address"
                 className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
               />
@@ -299,14 +330,31 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
             {couponError && <p className="mt-1.5 text-xs text-chili">{couponError}</p>}
           </div>
 
+          {appliedPromotions.length > 0 && (
+            <div className="mt-3 flex flex-col gap-1 rounded-xl bg-saffron/10 px-3 py-2">
+              {appliedPromotions.map((p) => (
+                <div key={p.id} className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-saffron-dark">🎉 {p.name}</span>
+                  <span className="text-saffron-dark">−{formatPrice(p.discount)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="mt-4 flex justify-between text-sm text-ink-soft">
             <span>Subtotal</span>
             <span>{formatPrice(subtotal())}</span>
           </div>
           {couponDiscount > 0 && (
             <div className="mt-1 flex justify-between text-sm text-basil-dark">
-              <span>Discount</span>
+              <span>Coupon discount</span>
               <span>−{formatPrice(couponDiscount)}</span>
+            </div>
+          )}
+          {promoDiscount > 0 && (
+            <div className="mt-1 flex justify-between text-sm text-saffron-dark">
+              <span>Promotions</span>
+              <span>−{formatPrice(promoDiscount)}</span>
             </div>
           )}
           <div className="mt-1 flex justify-between text-sm text-ink-soft">

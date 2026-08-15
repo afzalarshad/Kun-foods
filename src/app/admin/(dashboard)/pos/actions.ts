@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { createOrder, OrderError } from "@/lib/create-order";
 
 const posOrderSchema = z.object({
@@ -11,6 +11,14 @@ const posOrderSchema = z.object({
   address: z.string().min(2).max(300).optional(),
   city: z.string().min(2).max(100).optional(),
   paymentMethod: z.enum(["cash", "cod", "card"]),
+  payments: z
+    .array(
+      z.object({
+        method: z.enum(["cash", "cod", "card", "bank_transfer", "other"]),
+        amount: z.number().min(1),
+      })
+    )
+    .optional(),
   status: z.enum(["pending", "processing", "delivered"]),
   couponCode: z.string().max(40).optional(),
   items: z
@@ -27,7 +35,7 @@ const posOrderSchema = z.object({
 export type PosOrderInput = z.infer<typeof posOrderSchema>;
 
 export async function createPosOrder(input: PosOrderInput) {
-  await requireAdmin();
+  await requirePermission("pos.operate");
   const parsed = posOrderSchema.parse(input);
 
   try {
@@ -37,7 +45,7 @@ export async function createPosOrder(input: PosOrderInput) {
       city: parsed.city ?? "",
       source: "pos",
     });
-    return { orderNumber: order.orderNumber };
+    return { orderId: order.id, orderNumber: order.orderNumber };
   } catch (err) {
     if (err instanceof OrderError) {
       return { error: err.message };

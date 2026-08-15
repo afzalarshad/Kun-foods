@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, slugify } from "@/lib/require-admin";
+import { requirePermission, slugify } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 
 const bundleSchema = z.object({
@@ -28,7 +28,7 @@ function parseItems(formData: FormData) {
 }
 
 export async function createBundle(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("promotions.manage");
   const parsed = bundleSchema.parse({
     name: formData.get("name"),
     description: formData.get("description"),
@@ -70,7 +70,7 @@ export async function createBundle(formData: FormData) {
 }
 
 export async function updateBundle(bundleId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("promotions.manage");
   const parsed = bundleSchema.parse({
     name: formData.get("name"),
     description: formData.get("description"),
@@ -114,7 +114,7 @@ export async function updateBundle(bundleId: string, formData: FormData) {
 }
 
 export async function deleteBundle(bundleId: string) {
-  const session = await requireAdmin();
+  const session = await requirePermission("promotions.manage");
   const before = await prisma.bundle.findUniqueOrThrow({ where: { id: bundleId } });
   await prisma.bundle.delete({ where: { id: bundleId } });
 

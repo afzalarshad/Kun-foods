@@ -8,13 +8,14 @@ datasource db {
 }
 
 model Category {
-  id          String    @id @default(cuid())
+  id          String      @id @default(cuid())
   name        String
-  slug        String    @unique
+  slug        String      @unique
   description String?
   image       String?
   products    Product[]
-  createdAt   DateTime  @default(now())
+  promotions  Promotion[]
+  createdAt   DateTime    @default(now())
 }
 
 model Product {
@@ -34,11 +35,13 @@ model Product {
   weightLabel    String? // e.g. "500g", "1kg"
   stock          Int                 @default(100)
   featured       Boolean             @default(false)
+  active         Boolean             @default(true) // hidden from storefront when false, without deleting history
   categoryId     String
   category       Category            @relation(fields: [categoryId], references: [id])
   orderItems     OrderItem[]
   bundleItems    BundleItem[]
   movements      InventoryMovement[]
+  promotions     Promotion[]
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 }
@@ -78,6 +81,28 @@ model Coupon {
   expiresAt   DateTime?
   orders      Order[]
   createdAt   DateTime  @default(now())
+}
+
+model Promotion {
+  id                 String    @id @default(cuid())
+  name               String
+  type               String // "percentage_off" | "fixed_off" | "bogo"
+  scope              String // "all" | "category" | "product" ("bogo" always implies "product")
+  categoryId         String?
+  category           Category? @relation(fields: [categoryId], references: [id])
+  productId          String?
+  product            Product?  @relation(fields: [productId], references: [id])
+  segment            String? // optional SegmentId (src/lib/segments.ts); null = every customer
+  value              Int? // percentage_off: 1-100; fixed_off: paisa amount
+  buyQuantity        Int? // bogo: buy this many
+  getQuantity        Int? // bogo: get this many at getDiscountPercent off
+  getDiscountPercent Int? // bogo: 100 = free, 50 = half off, etc.
+  startsAt           DateTime?
+  endsAt             DateTime?
+  active             Boolean   @default(true)
+  priority           Int       @default(0) // lower runs first; mainly for reporting order, discounts always stack
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
 model Customer {
@@ -150,6 +175,8 @@ model Order {
   discount           Int               @default(0)
   couponId           String?
   coupon             Coupon?           @relation(fields: [couponId], references: [id])
+  promoDiscount      Int               @default(0)
+  promotionsJson     String? // JSON-encoded array of {id, name, discount} auto-applied promotions
   shipping           Int
   total              Int
   items              OrderItem[]
@@ -163,16 +190,17 @@ model Order {
 }
 
 model OrderItem {
-  id        String   @id @default(cuid())
-  orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String?
-  product   Product? @relation(fields: [productId], references: [id])
-  bundleId  String?
-  bundle    Bundle?  @relation(fields: [bundleId], references: [id])
-  name      String
-  price     Int
-  quantity  Int
+  id             String   @id @default(cuid())
+  orderId        String
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String?
+  product        Product? @relation(fields: [productId], references: [id])
+  bundleId       String?
+  bundle         Bundle?  @relation(fields: [bundleId], references: [id])
+  name           String
+  price          Int
+  quantity       Int
+  pickedQuantity Int      @default(0)
 }
 
 model OrderStatusEvent {
@@ -281,7 +309,7 @@ model AdminUser {
   email        String   @unique
   passwordHash String
   name         String
-  role         String   @default("admin") // "admin" | "staff" | "pos"
+  role         String   @default("admin") // see src/lib/permissions.ts ROLE_PERMISSIONS for the full role -> permission map
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 }
@@ -294,5 +322,40 @@ model AuditLog {
   entityId   String?
   before     String? // JSON snapshot
   after      String? // JSON snapshot
+  createdAt  DateTime @default(now())
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model NotificationTemplate {
+  id        String   @id @default(cuid())
+  key       String   @unique // e.g. "order_created_email"
+  channel   String // "email" | "sms"
+  subject   String? // email only
+  body      String // supports {{variable}} placeholders
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+model AdminNotification {
+  id        String   @id @default(cuid())
+  type      String // "low_stock" | "new_order" | "new_ticket" | "return_requested"
+  message   String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model HeldSale {
+  id         String   @id @default(cuid())
+  label      String? // optional note, e.g. "Ahmed - blue shirt"
+  cart       String // JSON-encoded line items
+  customer   String // JSON-encoded customer/delivery fields
+  actorEmail String?
   createdAt  DateTime @default(now())
 }

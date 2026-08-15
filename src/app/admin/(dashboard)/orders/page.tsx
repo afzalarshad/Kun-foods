@@ -1,97 +1,119 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { formatPrice } from "@/lib/format";
+import { OrdersTable } from "@/components/admin/orders-table";
 
-const statusStyles: Record<string, string> = {
-  pending: "bg-saffron/20 text-saffron-dark",
-  processing: "bg-plum/20 text-plum",
-  shipped: "bg-basil/20 text-basil-dark",
-  delivered: "bg-basil text-white",
-  cancelled: "bg-chili/20 text-chili-dark",
-};
+const PAGE_SIZE = 50;
 
-const priorityDot: Record<string, string> = {
-  low: "bg-ink/20",
-  normal: "",
-  high: "bg-saffron",
-  urgent: "bg-chili",
-};
+export default async function AdminOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; q?: string; status?: string }>;
+}) {
+  const { page: pageParam, q, status } = await searchParams;
+  const page = Math.max(1, Number(pageParam) || 1);
+  const query = q?.trim();
 
-export default async function AdminOrdersPage() {
-  const orders = await prisma.order.findMany({ orderBy: { createdAt: "desc" } });
+  const where = {
+    ...(status ? { status } : {}),
+    ...(query
+      ? {
+          OR: [
+            { orderNumber: { contains: query, mode: "insensitive" as const } },
+            { customerName: { contains: query, mode: "insensitive" as const } },
+            { phone: { contains: query } },
+            { email: { contains: query, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
+
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.order.count({ where }),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const baseQuery = (overrides: { page?: number; q?: string; status?: string }) => {
+    const params = new URLSearchParams();
+    const qVal = overrides.q !== undefined ? overrides.q : query;
+    const statusVal = overrides.status !== undefined ? overrides.status : status;
+    if (qVal) params.set("q", qVal);
+    if (statusVal) params.set("status", statusVal);
+    if (overrides.page) params.set("page", String(overrides.page));
+    const qs = params.toString();
+    return qs ? `?${qs}` : "";
+  };
+
+  const statuses = ["pending", "processing", "shipped", "delivered", "cancelled"];
 
   return (
     <div>
       <h1 className="font-heading text-3xl font-extrabold">Orders</h1>
-      <p className="mt-1 text-ink-soft">{orders.length} total</p>
+      <p className="mt-1 text-ink-soft">{total} total</p>
 
-      <div className="mt-8 overflow-x-auto rounded-3xl bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-ink/10 text-ink-soft">
-              <th className="px-6 py-3 font-medium">Order</th>
-              <th className="px-6 py-3 font-medium">Customer</th>
-              <th className="px-6 py-3 font-medium">Source</th>
-              <th className="px-6 py-3 font-medium">Payment</th>
-              <th className="px-6 py-3 font-medium">Status</th>
-              <th className="px-6 py-3 font-medium">Total</th>
-              <th className="px-6 py-3 font-medium">Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-ink-soft">
-                  No orders yet.
-                </td>
-              </tr>
-            )}
-            {orders.map((order) => (
-              <tr key={order.id} className="border-b border-ink/5 last:border-0">
-                <td className="px-6 py-3">
-                  <Link href={`/admin/orders/${order.id}`} className="flex items-center gap-2 font-medium hover:text-chili">
-                    {priorityDot[order.priority] && (
-                      <span
-                        className={`h-2 w-2 shrink-0 rounded-full ${priorityDot[order.priority]}`}
-                        title={`${order.priority} priority`}
-                      />
-                    )}
-                    #{order.orderNumber}
-                  </Link>
-                </td>
-                <td className="px-6 py-3">{order.customerName}</td>
-                <td className="px-6 py-3">
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                      order.source === "pos" ? "bg-plum/20 text-plum" : "bg-cream-dark"
-                    }`}
-                  >
-                    {order.source === "pos" ? "POS" : "Online"}
-                  </span>
-                </td>
-                <td className="px-6 py-3 uppercase text-ink-soft">{order.paymentMethod}</td>
-                <td className="px-6 py-3">
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${
-                      statusStyles[order.status] ?? "bg-cream-dark"
-                    }`}
-                  >
-                    {order.status}
-                  </span>
-                </td>
-                <td className="px-6 py-3 font-medium">{formatPrice(order.total)}</td>
-                <td className="px-6 py-3 text-ink-soft">
-                  {new Date(order.createdAt).toLocaleDateString("en-PK", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <form className="mt-6 flex flex-wrap gap-2" action="/admin/orders">
+        <input
+          type="text"
+          name="q"
+          defaultValue={query}
+          placeholder="Search by order #, customer, phone, or email…"
+          className="w-full max-w-sm rounded-full border border-ink/20 bg-white px-4 py-2.5 text-sm focus:border-chili focus:outline-none"
+        />
+        {status && <input type="hidden" name="status" value={status} />}
+        <button type="submit" className="rounded-full border border-ink/20 px-4 py-2.5 text-sm font-semibold hover:bg-cream-dark">
+          Search
+        </button>
+        {(query || status) && (
+          <Link href="/admin/orders" className="rounded-full border border-ink/20 px-4 py-2.5 text-sm font-semibold hover:bg-cream-dark">
+            Clear
+          </Link>
+        )}
+      </form>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        <Link
+          href={baseQuery({ status: undefined, page: undefined })}
+          className={`rounded-full px-3 py-1.5 text-sm font-medium ${!status ? "bg-ink text-cream" : "bg-white hover:bg-cream-dark"}`}
+        >
+          All statuses
+        </Link>
+        {statuses.map((s) => (
+          <Link
+            key={s}
+            href={baseQuery({ status: s, page: undefined })}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium capitalize ${status === s ? "bg-ink text-cream" : "bg-white hover:bg-cream-dark"}`}
+          >
+            {s}
+          </Link>
+        ))}
       </div>
+
+      <div className="mt-6">
+        <OrdersTable orders={orders} />
+      </div>
+
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-3 text-sm">
+          {page > 1 && (
+            <Link href={baseQuery({ page: page - 1 })} className="rounded-full border border-ink/20 px-4 py-1.5 hover:bg-cream-dark">
+              ← Newer
+            </Link>
+          )}
+          <span className="text-ink-soft">
+            Page {page} of {totalPages}
+          </span>
+          {page < totalPages && (
+            <Link href={baseQuery({ page: page + 1 })} className="rounded-full border border-ink/20 px-4 py-1.5 hover:bg-cream-dark">
+              Older →
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }

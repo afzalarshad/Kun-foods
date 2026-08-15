@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/format";
 import { getShippingRate } from "@/lib/shipping";
 import { notifyOrderCreated } from "@/lib/notifications";
+import { notifyLowStockIfNeeded } from "@/lib/admin-notifications";
+import { computePromotionsForCart } from "@/lib/promotions";
 
 export type CreateOrderInput = {
   customerName: string;
@@ -12,6 +14,9 @@ export type CreateOrderInput = {
   postalCode?: string;
   notes?: string;
   paymentMethod: "cod" | "card" | "cash";
+  /** Optional split/partial payment lines actually collected (POS). Falls back to a single
+   *  payment for the full total under `paymentMethod` when omitted (storefront checkout). */
+  payments?: Array<{ method: "cash" | "cod" | "card" | "bank_transfer" | "other"; amount: number }>;
   source: "web" | "pos";
   status?: string;
   couponCode?: string;
@@ -95,14 +100,29 @@ export async function createOrder(input: CreateOrderInput) {
     couponId = coupon.id;
   }
 
+  const promoProductMap = new Map(
+    directProducts.map((p) => [p.id, { id: p.id, price: p.price, categoryId: p.categoryId }])
+  );
+  const { discount: rawPromoDiscount, applied: appliedPromotions } = await computePromotionsForCart({
+    items: input.items,
+    productMap: promoProductMap,
+    subtotal,
+    email: input.email,
+  });
+  const promoDiscount = Math.min(rawPromoDiscount, subtotal - discount);
+
   // An empty city means a walk-in/pickup POS sale — no delivery, no shipping charge.
   // Only look up a real shipping rate when a city was actually given.
   const rawCity = input.city.trim();
-  const shipping = rawCity ? await getShippingRate(rawCity, subtotal - discount) : 0;
-  const total = subtotal - discount + shipping;
+  const shipping = rawCity ? await getShippingRate(rawCity, subtotal - discount - promoDiscount) : 0;
+  const total = subtotal - discount - promoDiscount + shipping;
 
   const city = rawCity || "Walk-in / Pickup";
   const address = input.address.trim() || "In-store purchase";
+
+  const stockUpdates: { id: string; name: string; stock: number; reorderLevel: number | null }[] = [];
+  const distinctMethods = new Set((input.payments ?? []).map((p) => p.method));
+  const orderPaymentMethod = distinctMethods.size > 1 ? "split" : (input.payments?.[0]?.method ?? input.paymentMethod);
 
   const order = await prisma.$transaction(async (tx) => {
     const customer = await tx.customer.upsert({
@@ -128,12 +148,14 @@ export async function createOrder(input: CreateOrderInput) {
         city,
         postalCode: input.postalCode,
         notes: input.notes,
-        paymentMethod: input.paymentMethod,
+        paymentMethod: orderPaymentMethod,
         source: input.source,
         status: input.status ?? "pending",
         subtotal,
         discount,
         couponId,
+        promoDiscount,
+        promotionsJson: appliedPromotions.length > 0 ? JSON.stringify(appliedPromotions) : null,
         shipping,
         total,
         items: {
@@ -151,17 +173,56 @@ export async function createOrder(input: CreateOrderInput) {
     });
 
     for (const [productId, qty] of neededStock) {
-      await tx.product.update({ where: { id: productId }, data: { stock: { decrement: qty } } });
+      const updated = await tx.product.update({ where: { id: productId }, data: { stock: { decrement: qty } } });
+      stockUpdates.push(updated);
+      await tx.inventoryMovement.create({
+        data: {
+          productId,
+          type: "sale",
+          quantity: -qty,
+          reason: `Order ${created.orderNumber}`,
+          orderId: created.id,
+        },
+      });
     }
 
     if (couponId) {
       await tx.coupon.update({ where: { id: couponId }, data: { usedCount: { increment: 1 } } });
     }
 
+    if (input.payments && input.payments.length > 0) {
+      for (const p of input.payments) {
+        await tx.payment.create({
+          data: {
+            orderId: created.id,
+            amount: p.amount,
+            method: p.method,
+            status: p.method === "cod" ? "pending" : "paid",
+          },
+        });
+      }
+    } else {
+      await tx.payment.create({
+        data: {
+          orderId: created.id,
+          amount: total,
+          method: input.paymentMethod,
+          status: input.paymentMethod === "cod" ? "pending" : "paid",
+        },
+      });
+    }
+
     return created;
   });
 
   notifyOrderCreated(order).catch((err) => console.error("[create-order] notification failed:", err));
+  for (const p of stockUpdates) {
+    if (p.reorderLevel !== null) {
+      notifyLowStockIfNeeded(p.id, p.name, p.stock, p.reorderLevel).catch((err) =>
+        console.error("[create-order] low-stock notification failed:", err)
+      );
+    }
+  }
 
   return order;
 }

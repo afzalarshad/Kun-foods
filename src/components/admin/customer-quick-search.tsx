@@ -15,10 +15,11 @@ type SearchResult = {
 
 type QuickView = {
   customer: { id: string; name: string; email: string; phone: string; createdAt: string };
-  stats: { orderCount: number; totalSpent: number; openOrders: number };
+  stats: { orderCount: number; totalSpent: number; openOrders: number; openTickets: number };
   tags: string[];
   recentNotes: { id: string; note: string; createdAt: string }[];
   recentOrders: { id: string; orderNumber: string; status: string; total: number; createdAt: string }[];
+  recentTickets: { id: string; ticketNumber: string; subject: string; status: string }[];
 };
 
 export function CustomerQuickSearch() {
@@ -134,7 +135,7 @@ export function CustomerQuickSearch() {
                   </div>
                 )}
 
-                <div className="mt-4 grid grid-cols-3 gap-3">
+                <div className="mt-4 grid grid-cols-4 gap-3">
                   <div className="rounded-2xl bg-white p-3 text-center">
                     <p className="font-heading text-lg font-bold">{quickView.stats.orderCount}</p>
                     <p className="text-xs text-ink-soft">Orders</p>
@@ -146,6 +147,12 @@ export function CustomerQuickSearch() {
                   <div className="rounded-2xl bg-white p-3 text-center">
                     <p className="font-heading text-lg font-bold">{quickView.stats.openOrders}</p>
                     <p className="text-xs text-ink-soft">Open orders</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-3 text-center">
+                    <p className={`font-heading text-lg font-bold ${quickView.stats.openTickets > 0 ? "text-chili-dark" : ""}`}>
+                      {quickView.stats.openTickets}
+                    </p>
+                    <p className="text-xs text-ink-soft">Open tickets</p>
                   </div>
                 </div>
 
@@ -164,6 +171,28 @@ export function CustomerQuickSearch() {
                               #{o.orderNumber} <span className="capitalize text-ink-soft">· {o.status}</span>
                             </span>
                             <span className="font-medium">{formatPrice(o.total)}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {quickView.recentTickets.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Support tickets</p>
+                    <ul className="mt-2 flex flex-col gap-1.5">
+                      {quickView.recentTickets.map((t) => (
+                        <li key={t.id}>
+                          <Link
+                            href={`/admin/tickets/${t.id}`}
+                            onClick={() => setQuickView(null)}
+                            className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm hover:text-chili"
+                          >
+                            <span>
+                              #{t.ticketNumber} <span className="text-ink-soft">— {t.subject}</span>
+                            </span>
+                            <span className="capitalize text-ink-soft">{t.status.replace("_", " ")}</span>
                           </Link>
                         </li>
                       ))}
@@ -198,6 +227,13 @@ export function CustomerQuickSearch() {
                     className="rounded-full border-2 border-ink px-4 py-2 text-sm font-heading font-semibold hover:bg-ink hover:text-cream"
                   >
                     + New order
+                  </Link>
+                  <Link
+                    href={`/admin/tickets/new?customerName=${encodeURIComponent(quickView.customer.name)}&customerEmail=${encodeURIComponent(quickView.customer.email)}&customerPhone=${encodeURIComponent(quickView.customer.phone)}`}
+                    onClick={() => setQuickView(null)}
+                    className="rounded-full border-2 border-ink px-4 py-2 text-sm font-heading font-semibold hover:bg-ink hover:text-cream"
+                  >
+                    🎫 New ticket
                   </Link>
                   <a
                     href={`https://wa.me/${quickView.customer.phone.replace(/[^0-9]/g, "")}`}

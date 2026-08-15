@@ -50,12 +50,27 @@ export function UserForm({
         <label className="mb-1.5 block text-sm font-medium">Role</label>
         <select
           name="role"
-          defaultValue={user?.role ?? "staff"}
+          defaultValue={user?.role ?? "manager"}
           className="w-full rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
         >
-          <option value="admin">Admin — full access</option>
-          <option value="staff">Staff — everything except users/audit log</option>
-          <option value="pos">POS only — confined to the POS screen</option>
+          <option value="admin">Admin — full access, including users &amp; audit log</option>
+          <optgroup label="Operations">
+            <option value="manager">Manager — broad day-to-day access</option>
+            <option value="sales">Sales — customers, orders, POS</option>
+            <option value="support">Customer Support — customers, orders, tickets</option>
+            <option value="accountant">Accountant — payments &amp; financial reports</option>
+            <option value="marketing">Marketing Manager — promotions &amp; customer export</option>
+          </optgroup>
+          <optgroup label="Warehouse">
+            <option value="warehouse_manager">Warehouse Manager — inventory, pick &amp; pack, shipping</option>
+            <option value="inventory_manager">Inventory Manager — products &amp; stock</option>
+            <option value="picker">Picker — pick queue only</option>
+            <option value="packer">Packer — pack queue only</option>
+          </optgroup>
+          <optgroup label="Confined">
+            <option value="pos_operator">POS Operator — confined to the POS screen</option>
+            <option value="read_only">Read Only — view-only across the board</option>
+          </optgroup>
         </select>
       </div>
 

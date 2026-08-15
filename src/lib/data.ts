@@ -11,7 +11,7 @@ export async function getCategoryBySlug(slug: string) {
 
 export async function getFeaturedProducts(limit = 8): Promise<ProductCard[]> {
   const products = await prisma.product.findMany({
-    where: { featured: true },
+    where: { featured: true, active: true },
     include: { category: true },
     take: limit,
     orderBy: { createdAt: "desc" },
@@ -21,6 +21,7 @@ export async function getFeaturedProducts(limit = 8): Promise<ProductCard[]> {
 
 export async function getAllProducts(): Promise<ProductCard[]> {
   const products = await prisma.product.findMany({
+    where: { active: true },
     include: { category: true },
     orderBy: { createdAt: "desc" },
   });
@@ -29,7 +30,7 @@ export async function getAllProducts(): Promise<ProductCard[]> {
 
 export async function getProductsByCategory(categorySlug: string): Promise<ProductCard[]> {
   const products = await prisma.product.findMany({
-    where: { category: { slug: categorySlug } },
+    where: { category: { slug: categorySlug }, active: true },
     include: { category: true },
     orderBy: { createdAt: "desc" },
   });
@@ -41,13 +42,13 @@ export async function getProductBySlug(slug: string) {
     where: { slug },
     include: { category: true },
   });
-  if (!product) return null;
+  if (!product || !product.active) return null;
   return { ...toProductCard(product), description: product.description, stock: product.stock };
 }
 
 export async function getRelatedProducts(categorySlug: string, excludeSlug: string, limit = 4): Promise<ProductCard[]> {
   const products = await prisma.product.findMany({
-    where: { category: { slug: categorySlug }, slug: { not: excludeSlug } },
+    where: { category: { slug: categorySlug }, slug: { not: excludeSlug }, active: true },
     include: { category: true },
     take: limit,
   });

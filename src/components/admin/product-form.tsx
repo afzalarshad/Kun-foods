@@ -200,6 +200,11 @@ export function ProductForm({
         Feature on homepage
       </label>
 
+      <label className="flex items-center gap-2 text-sm font-medium">
+        <input type="checkbox" name="active" defaultChecked={product?.active ?? true} />
+        Active (visible on the storefront and in POS)
+      </label>
+
       <button
         type="submit"
         className="mt-2 w-fit rounded-full bg-chili px-7 py-3 font-heading font-semibold text-white hover:bg-chili-dark"

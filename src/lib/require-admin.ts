@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { hasPermission, type Permission } from "@/lib/permissions";
 
-export type AdminRole = "admin" | "staff" | "pos";
+export type AdminRole = string;
 
 export async function requireAdmin() {
   const session = await auth();
@@ -12,8 +13,28 @@ export async function requireAdmin() {
 /** Redirects to the dashboard if the signed-in admin doesn't hold one of the given roles. */
 export async function requireRole(roles: AdminRole[]) {
   const session = await requireAdmin();
-  const role = (session.user.role as AdminRole) ?? "staff";
+  const role = session.user.role ?? "staff";
   if (!roles.includes(role)) redirect("/admin");
+  return session;
+}
+
+/**
+ * Redirects to the dashboard if the signed-in admin's role doesn't grant the
+ * given permission. This is the server-side gate -- never trust a hidden UI
+ * element alone, every mutating action and API route re-checks here.
+ */
+export async function requirePermission(permission: Permission) {
+  const session = await requireAdmin();
+  const role = session.user.role ?? "staff";
+  if (!hasPermission(role, permission)) redirect("/admin");
+  return session;
+}
+
+/** Like requirePermission, but passes if the role holds any one of the given permissions. */
+export async function requireAnyPermission(permissions: Permission[]) {
+  const session = await requireAdmin();
+  const role = session.user.role ?? "staff";
+  if (!permissions.some((p) => hasPermission(role, p))) redirect("/admin");
   return session;
 }
 

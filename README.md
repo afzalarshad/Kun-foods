@@ -104,6 +104,16 @@ src/store/cart.ts               Zustand cart store
   is set.
 - **Coupons**: percentage or fixed-amount discount codes with an optional
   minimum order, usage limit, and expiry date — managed at `/admin/coupons`.
+- **Promotions engine** (`/admin/promotions`): automatic discounts that apply
+  at checkout and POS with no code needed, on top of coupons. Percentage or
+  fixed-amount off the entire order, one category, or one product; BOGO deals
+  (buy X get Y at a chosen % off — e.g. "buy 2 get 1 free"); optional
+  targeting to one of the 10 dynamic customer segments (e.g. only VIPs, or
+  only inactive-90-day customers to win them back); and an optional
+  start/end schedule for flash sales. Matching promotions stack and are
+  shown live in the cart summary as they apply, then persisted on the order
+  (`Order.promoDiscount` / `promotionsJson`) for the receipt and order detail
+  page.
 - **Bundles**: grouped products sold at a special price, shown at `/deals`
   and manageable at `/admin/bundles`.
 - **Admin panel** (`/admin`): dashboard stats, full product/coupon/bundle
@@ -112,7 +122,21 @@ src/store/cart.ts               Zustand cart store
 - **POS** (`/admin/pos`): create an order for an in-person or phone sale —
   pick products/bundles, apply a coupon, enter the customer, and submit. Uses
   the same order-creation logic (stock decrement, customer upsert,
-  notifications) as the storefront checkout.
+  notifications) as the storefront checkout. POS depth features:
+  - **Barcode/SKU scan**: an always-focused scan field matches a product's
+    `barcode` or `sku` and adds it to the cart on Enter, with success/error
+    feedback — works with a USB/Bluetooth barcode scanner or manual typing.
+  - **Hold & resume sale**: pause an in-progress sale (cart + customer
+    details) to serve a walk-in or take a call, then resume it later —
+    possibly from a different POS session — via the "Held (N)" list. Backed
+    by a `HeldSale` table so nothing is lost if the browser tab closes.
+  - **Split/partial payment**: toggle "Split payment" to record multiple
+    payment lines (e.g. half cash, half card) against one order — each line
+    becomes its own `Payment` record, and the order's payment method is
+    stored as `split` when more than one method is used.
+  - **Printable receipt**: every POS sale redirects to a print-friendly
+    receipt (`/admin/pos/receipt/[orderId]`) with store details from
+    Settings, line items, totals, and the payment breakdown.
 - **CRM** (`/admin/customers`): every order (storefront or POS) automatically
   creates or updates a `Customer` record keyed by email, with tags, internal
   notes, saved addresses, order count, total spent, and full order history.
@@ -120,10 +144,16 @@ src/store/cart.ts               Zustand cart store
   name/phone/email/order number and opens a quick-view popup (lifetime
   value, open orders, notes, WhatsApp/new-order shortcuts) — built for the
   "customer calls in" workflow.
-- **Roles & staff accounts** (`/admin/users`, admin-only): create logins for
-  staff with three roles — **Admin** (full access), **Staff** (everything
-  except user management/audit log), **POS** (confined to the POS screen
-  only, enforced in `src/proxy.ts`, not just hidden in the UI).
+- **Roles & granular permissions** (`/admin/users`, admin-only): 13 roles —
+  Admin, Manager, Sales, Customer Support, Warehouse Manager, Picker,
+  Packer, Inventory Manager, Accountant, Marketing Manager, POS Operator,
+  and Read Only (plus the original Staff/POS kept for backward
+  compatibility) — each mapped to a specific permission set in
+  `src/lib/permissions.ts`. Enforcement is server-side in `src/proxy.ts`
+  (route-level, redirects a direct URL visit a role can't use) and in every
+  server action/API route via `requirePermission()`/`requireAnyPermission()`
+  — never just hidden in the sidebar. Picker/Packer/POS Operator are
+  confined to a single section the same way the original POS role was.
 - **Audit log** (`/admin/audit-log`, admin-only): every product, order,
   coupon, bundle, shipping-zone, and user change is recorded with who did
   it and when.
@@ -131,6 +161,78 @@ src/store/cart.ts               Zustand cart store
   (`OrderStatusEvent`) instead of overwriting a single field, support an
   optional note and a priority/assigned-staff field, and returns/refunds
   are tracked per order at `/admin/orders/[id]`.
+- **Inventory** (`/admin/inventory`): every stock change — sales, returns
+  received back into the warehouse, and manual adjustments — is logged as
+  an `InventoryMovement` with who/what/why. A low-stock widget (based on
+  each product's optional reorder level) surfaces on both the dashboard and
+  the inventory page, and a manual "Adjust stock" form handles damage,
+  recounts, and new stock received from a supplier.
+- **Payments** (per order at `/admin/orders/[id]`): every order gets an
+  initial `Payment` record matching its payment method (COD starts
+  "pending", card/cash start "paid"). Staff can record additional
+  payments — partial payments, COD collection, refunds — and see a live
+  paid/due balance for the order, all tied to a reconcilable ledger rather
+  than a single order-level status flag.
+- **Shipments & labels** (`/admin/shipments`, per order at
+  `/admin/orders/[id]`): book a courier — **Leopards**, **TCS**, **PostEx**,
+  or manual/own rider — with a tracking number, weight, and COD amount,
+  track it through pending → booked → picked up → in transit → delivered,
+  and generate a printable shipping label (`/admin/orders/[id]/label`) with
+  sender/recipient address and COD amount. `/admin/shipments` is a
+  filterable manifest of every booking across couriers, also printable.
+- **Support tickets** (`/admin/tickets`): log a customer call, WhatsApp
+  message, or complaint as a ticket (category, priority, status, optional
+  order link), reply in a threaded conversation with public replies and
+  staff-only internal notes, and track it through
+  open → pending → in progress → waiting on customer → resolved → closed.
+  Tickets are linked to the customer record, shown on the customer detail
+  page, and surfaced (with an open-ticket count) in the CRM quick-view.
+- **Reports** (`/admin/reports`): revenue, order count, average order
+  value, and new customers over a 7/30/90-day window, with a daily sales
+  chart, top products by revenue, revenue by category, order-status
+  breakdown, and payment-method breakdown — all computed live from the
+  same orders/payments data, no separate analytics service needed.
+- **Import / export** (`/admin/import-export`, admin-only): download
+  products/orders/customers as CSV, or bulk-upload a products CSV — rows
+  are matched by SKU (update) or created fresh, with per-row validation
+  and an error report, plus automatic inventory-movement logging for any
+  stock changes brought in by the import.
+- **Notification templates** (`/admin/settings/templates`, admin-only):
+  order confirmation and status-update email/SMS copy is admin-editable
+  with `{{customer_name}}`, `{{order_number}}`, `{{total}}`, `{{status}}`,
+  and `{{items_list}}` variables, a live preview with sample data, a
+  per-template enable toggle, and a reset-to-default. Falls back to the
+  built-in copy until customized, so nothing breaks on upgrade.
+- **Admin notification center**: a bell in the admin header surfaces new
+  orders, new support tickets, return requests, and low-stock alerts
+  (deduped so one alert per low-stock episode, not one per sale) with
+  mark-read / mark-all-read, linking straight to the relevant record.
+- **Customer segments** (`/admin/customers`): filter chips for New (30d),
+  Returning, Frequent, VIP (tag-based), High value, Inactive 30/90d, Coupon
+  users, COD, and High return — computed live from order/tag/return data.
+  Each segment is exportable to CSV directly from the filtered view.
+- **Settings** (`/admin/settings`, admin-only): store name/address/phone
+  (used on shipping labels), and platform-wide toggles for email/SMS
+  notifications that genuinely gate sending (not just a UI checkbox) —
+  plus a read-only integration status panel showing which provider env
+  vars (Resend, Twilio, WhatsApp) are configured.
+- **Pagination, search & bulk actions**: Products, Orders, Customers, and
+  Tickets lists are all searchable and paginated (50/page), each with
+  multi-select bulk actions — activate/deactivate products, assign or
+  bulk-status orders, tag customers, and assign/resolve tickets in one
+  click. Products also have an `active` flag: deactivating a product hides
+  it from the storefront and POS without deleting its order history.
+- **Warehouse pick & pack** (`/admin/warehouse`): confirmed orders enter a
+  pick queue sorted by priority. Each order has a scan screen — type or
+  scan a barcode/SKU (works with any USB/Bluetooth scanner acting as a
+  keyboard, or manual entry on a phone) to check off that unit against the
+  order; over-scanning or unmatched codes are rejected, and "mark packed"
+  stays disabled until every line item is fully picked, then moves the
+  order to shipped with a timestamped audit trail. The same rules are
+  enforced by a documented `/api/warehouse/*` API surface (product
+  lookup by barcode/SKU, pick queue, scan, mark-packed) for a future
+  Android/handheld scanner app — the web UI keeps working with or
+  without it.
 
 ## Payments
 

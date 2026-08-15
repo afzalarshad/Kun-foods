@@ -3,11 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 
 export async function addCustomerTag(customerId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("customers.edit");
   const tag = z.string().min(1).max(30).parse(formData.get("tag")).trim();
 
   await prisma.customerTag.upsert({
@@ -28,7 +28,7 @@ export async function addCustomerTag(customerId: string, formData: FormData) {
 }
 
 export async function removeCustomerTag(customerId: string, tagId: string) {
-  const session = await requireAdmin();
+  const session = await requirePermission("customers.edit");
   const tag = await prisma.customerTag.delete({ where: { id: tagId } });
 
   await logAudit({
@@ -43,7 +43,7 @@ export async function removeCustomerTag(customerId: string, tagId: string) {
 }
 
 export async function addCustomerNote(customerId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("customers.edit");
   const note = z.string().min(1).max(1000).parse(formData.get("note"));
 
   await prisma.customerNote.create({
@@ -69,7 +69,7 @@ const addressSchema = z.object({
 });
 
 export async function addCustomerAddress(customerId: string, formData: FormData) {
-  await requireAdmin();
+  await requirePermission("customers.edit");
   const parsed = addressSchema.parse({
     label: formData.get("label"),
     address: formData.get("address"),
@@ -97,7 +97,7 @@ export async function addCustomerAddress(customerId: string, formData: FormData)
 }
 
 export async function deleteCustomerAddress(customerId: string, addressId: string) {
-  await requireAdmin();
+  await requirePermission("customers.edit");
   await prisma.customerAddress.delete({ where: { id: addressId } });
   revalidatePath(`/admin/customers/${customerId}`);
 }

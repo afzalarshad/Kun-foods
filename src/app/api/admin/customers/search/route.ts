@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 
 export async function GET(request: Request) {
-  await requireAdmin();
+  await requirePermission("customers.view");
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim();
 
