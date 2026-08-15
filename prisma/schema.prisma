@@ -305,3 +305,22 @@ model Setting {
   value     String
   updatedAt DateTime @updatedAt
 }
+
+model NotificationTemplate {
+  id        String   @id @default(cuid())
+  key       String   @unique // e.g. "order_created_email"
+  channel   String // "email" | "sms"
+  subject   String? // email only
+  body      String // supports {{variable}} placeholders
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+model AdminNotification {
+  id        String   @id @default(cuid())
+  type      String // "low_stock" | "new_order" | "new_ticket" | "return_requested"
+  message   String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}

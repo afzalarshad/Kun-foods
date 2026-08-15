@@ -2,9 +2,12 @@ import { Resend } from "resend";
 import twilio from "twilio";
 import { formatPrice } from "@/lib/format";
 import { getBooleanSetting, SETTING_KEYS } from "@/lib/settings";
+import { getTemplate, renderTemplate } from "@/lib/templates";
+import { createAdminNotification } from "@/lib/admin-notifications";
 
 type OrderItemLike = { name: string; price: number; quantity: number };
 type OrderLike = {
+  id: string;
   orderNumber: string;
   customerName: string;
   email: string;
@@ -58,27 +61,46 @@ function itemsHtml(items: OrderItemLike[]) {
   return items
     .map(
       (item) =>
-        `<tr><td style="padding:4px 0">${item.name} × ${item.quantity}</td><td style="padding:4px 0;text-align:right">${formatPrice(item.price * item.quantity)}</td></tr>`
+        `<tr><td style="padding:4px 0">${item.name} × ${item.quantity}</td><td style="text-align:right">${formatPrice(item.price * item.quantity)}</td></tr>`
     )
     .join("");
 }
 
-export async function notifyOrderCreated(order: OrderLike) {
-  await sendEmail(
-    order.email,
-    `Order confirmed — #${order.orderNumber}`,
-    `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-      <h2>Thanks, ${order.customerName.split(" ")[0]}!</h2>
-      <p>Your Kun Foods order <strong>#${order.orderNumber}</strong> has been placed.</p>
-      <table style="width:100%;border-collapse:collapse">${itemsHtml(order.items)}</table>
-      <p style="margin-top:12px"><strong>Total: ${formatPrice(order.total)}</strong></p>
-    </div>`
-  );
+function statusLabel(status: string) {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
 
-  await sendSMS(
-    order.phone,
-    `Kun Foods: Order #${order.orderNumber} confirmed. Total ${formatPrice(order.total)}. Thank you!`
-  );
+async function sendTemplated(
+  emailKey: "order_created_email" | "order_status_changed_email",
+  smsKey: "order_created_sms" | "order_status_changed_sms",
+  order: OrderLike
+) {
+  const vars = {
+    customer_name: order.customerName.split(" ")[0],
+    order_number: order.orderNumber,
+    total: formatPrice(order.total),
+    status: statusLabel(order.status),
+  };
+
+  const emailTemplate = await getTemplate(emailKey);
+  if (emailTemplate.enabled) {
+    const itemsListHtml = order.items.map((i) => `${i.quantity}× ${i.name} — ${formatPrice(i.price * i.quantity)}`).join("<br>");
+    await sendEmail(
+      order.email,
+      renderTemplate(emailTemplate.subject, vars),
+      renderTemplate(emailTemplate.body, { ...vars, items_list: itemsListHtml })
+    );
+  }
+
+  const smsTemplate = await getTemplate(smsKey);
+  if (smsTemplate.enabled) {
+    const itemsListPlain = order.items.map((i) => `${i.quantity}x ${i.name}`).join(", ");
+    await sendSMS(order.phone, renderTemplate(smsTemplate.body, { ...vars, items_list: itemsListPlain }));
+  }
+}
+
+export async function notifyOrderCreated(order: OrderLike) {
+  await sendTemplated("order_created_email", "order_created_sms", order);
 
   const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
   if (adminEmail) {
@@ -93,22 +115,14 @@ export async function notifyOrderCreated(order: OrderLike) {
       </div>`
     );
   }
+
+  await createAdminNotification({
+    type: "new_order",
+    message: `New order #${order.orderNumber} from ${order.customerName} — ${formatPrice(order.total)}`,
+    link: `/admin/orders/${order.id}`,
+  });
 }
 
 export async function notifyOrderStatusChanged(order: OrderLike) {
-  const statusLabel = order.status.charAt(0).toUpperCase() + order.status.slice(1);
-
-  await sendEmail(
-    order.email,
-    `Order #${order.orderNumber} — ${statusLabel}`,
-    `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-      <h2>Your order is now: ${statusLabel}</h2>
-      <p>Order <strong>#${order.orderNumber}</strong> for ${formatPrice(order.total)}.</p>
-    </div>`
-  );
-
-  await sendSMS(
-    order.phone,
-    `Kun Foods: Order #${order.orderNumber} is now ${statusLabel}.`
-  );
+  await sendTemplated("order_status_changed_email", "order_status_changed_sms", order);
 }

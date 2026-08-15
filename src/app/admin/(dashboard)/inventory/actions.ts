@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
+import { notifyLowStockIfNeeded } from "@/lib/admin-notifications";
 
 const adjustSchema = z.object({
   productId: z.string().min(1),
@@ -48,6 +49,12 @@ export async function adjustStock(formData: FormData): Promise<{ error?: string 
     before: { stock: product.stock },
     after: { stock: newStock, delta: parsed.quantity, reason: parsed.reason },
   });
+
+  if (product.reorderLevel !== null) {
+    notifyLowStockIfNeeded(parsed.productId, product.name, newStock, product.reorderLevel).catch((err) =>
+      console.error("[adjustStock] low-stock notification failed:", err)
+    );
+  }
 
   revalidatePath("/admin/inventory");
   revalidatePath("/admin/products");

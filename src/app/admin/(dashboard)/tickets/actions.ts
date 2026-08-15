@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 import { generateTicketNumber } from "@/lib/format";
+import { createAdminNotification } from "@/lib/admin-notifications";
 
 const categories = ["order", "payment", "delivery", "return", "refund", "product", "complaint", "general"] as const;
 const priorities = ["low", "normal", "high", "urgent"] as const;
@@ -64,6 +65,12 @@ export async function createTicket(formData: FormData) {
     entityType: "SupportTicket",
     entityId: ticket.id,
     after: { ticketNumber: ticket.ticketNumber, subject: ticket.subject, category: ticket.category },
+  });
+
+  await createAdminNotification({
+    type: "new_ticket",
+    message: `New ticket #${ticket.ticketNumber} — ${ticket.subject}`,
+    link: `/admin/tickets/${ticket.id}`,
   });
 
   revalidatePath("/admin/tickets");

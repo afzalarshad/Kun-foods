@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/format";
 import { getShippingRate } from "@/lib/shipping";
 import { notifyOrderCreated } from "@/lib/notifications";
+import { notifyLowStockIfNeeded } from "@/lib/admin-notifications";
 
 export type CreateOrderInput = {
   customerName: string;
@@ -104,6 +105,8 @@ export async function createOrder(input: CreateOrderInput) {
   const city = rawCity || "Walk-in / Pickup";
   const address = input.address.trim() || "In-store purchase";
 
+  const stockUpdates: { id: string; name: string; stock: number; reorderLevel: number | null }[] = [];
+
   const order = await prisma.$transaction(async (tx) => {
     const customer = await tx.customer.upsert({
       where: { email: input.email },
@@ -151,7 +154,8 @@ export async function createOrder(input: CreateOrderInput) {
     });
 
     for (const [productId, qty] of neededStock) {
-      await tx.product.update({ where: { id: productId }, data: { stock: { decrement: qty } } });
+      const updated = await tx.product.update({ where: { id: productId }, data: { stock: { decrement: qty } } });
+      stockUpdates.push(updated);
       await tx.inventoryMovement.create({
         data: {
           productId,
@@ -180,6 +184,13 @@ export async function createOrder(input: CreateOrderInput) {
   });
 
   notifyOrderCreated(order).catch((err) => console.error("[create-order] notification failed:", err));
+  for (const p of stockUpdates) {
+    if (p.reorderLevel !== null) {
+      notifyLowStockIfNeeded(p.id, p.name, p.stock, p.reorderLevel).catch((err) =>
+        console.error("[create-order] low-stock notification failed:", err)
+      );
+    }
+  }
 
   return order;
 }

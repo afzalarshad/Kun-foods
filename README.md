@@ -173,6 +173,16 @@ src/store/cart.ts               Zustand cart store
   are matched by SKU (update) or created fresh, with per-row validation
   and an error report, plus automatic inventory-movement logging for any
   stock changes brought in by the import.
+- **Notification templates** (`/admin/settings/templates`, admin-only):
+  order confirmation and status-update email/SMS copy is admin-editable
+  with `{{customer_name}}`, `{{order_number}}`, `{{total}}`, `{{status}}`,
+  and `{{items_list}}` variables, a live preview with sample data, a
+  per-template enable toggle, and a reset-to-default. Falls back to the
+  built-in copy until customized, so nothing breaks on upgrade.
+- **Admin notification center**: a bell in the admin header surfaces new
+  orders, new support tickets, return requests, and low-stock alerts
+  (deduped so one alert per low-stock episode, not one per sale) with
+  mark-read / mark-all-read, linking straight to the relevant record.
 - **Customer segments** (`/admin/customers`): filter chips for New (30d),
   Returning, Frequent, VIP (tag-based), High value, Inactive 30/90d, Coupon
   users, COD, and High return — computed live from order/tag/return data.

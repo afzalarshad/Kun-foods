@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
+import { createAdminNotification } from "@/lib/admin-notifications";
 
 const returnStatuses = ["requested", "approved", "rejected", "received", "refunded"] as const;
 
@@ -22,6 +23,13 @@ export async function createReturn(orderId: string, formData: FormData) {
     entityType: "Return",
     entityId: created.id,
     after: { orderId, reason },
+  });
+
+  const orderForNotif = await prisma.order.findUnique({ where: { id: orderId }, select: { orderNumber: true } });
+  await createAdminNotification({
+    type: "return_requested",
+    message: `Return requested for order #${orderForNotif?.orderNumber ?? orderId} — ${reason}`,
+    link: `/admin/orders/${orderId}`,
   });
 
   revalidatePath(`/admin/orders/${orderId}`);

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requirePermission } from "@/lib/require-admin";
 import { getSettings, SETTING_KEYS } from "@/lib/settings";
 import { updateSettings } from "@/app/admin/(dashboard)/settings/actions";
@@ -75,6 +76,9 @@ export default async function SettingsPage() {
             Send order confirmation / status SMS
           </label>
         </div>
+        <Link href="/admin/settings/templates" className="mt-3 inline-block text-sm font-semibold text-chili hover:underline">
+          Edit email/SMS templates →
+        </Link>
 
         <button
           type="submit"
