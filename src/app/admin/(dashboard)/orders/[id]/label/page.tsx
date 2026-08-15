@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
 import { requirePermission } from "@/lib/require-admin";
 import { PrintButton } from "@/components/admin/print-button";
+import { getSettings, SETTING_KEYS } from "@/lib/settings";
 
 const courierLabels: Record<string, string> = {
   leopards: "Leopards Courier",
@@ -15,15 +16,19 @@ export default async function ShippingLabelPage({ params }: { params: Promise<{ 
   await requirePermission("shipping.manage");
   const { id } = await params;
 
-  const order = await prisma.order.findUnique({
-    where: { id },
-    include: { items: true, shipment: true },
-  });
+  const [order, settings] = await Promise.all([
+    prisma.order.findUnique({
+      where: { id },
+      include: { items: true, shipment: true },
+    }),
+    getSettings(),
+  ]);
   if (!order || !order.shipment) notFound();
 
   const shipment = order.shipment;
-  const storeAddress = process.env.STORE_ADDRESS || "Kun Foods, Main Boulevard, Lahore, Pakistan";
-  const storePhone = process.env.STORE_PHONE || "";
+  const storeName = settings[SETTING_KEYS.storeName];
+  const storeAddress = settings[SETTING_KEYS.storeAddress];
+  const storePhone = settings[SETTING_KEYS.storePhone];
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -50,7 +55,7 @@ export default async function ShippingLabelPage({ params }: { params: Promise<{ 
         <div className="mt-6 grid grid-cols-2 gap-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">From</p>
-            <p className="mt-1 text-sm font-semibold">Kun Foods</p>
+            <p className="mt-1 text-sm font-semibold">{storeName}</p>
             <p className="text-sm text-ink-soft">{storeAddress}</p>
             {storePhone && <p className="text-sm text-ink-soft">{storePhone}</p>}
           </div>

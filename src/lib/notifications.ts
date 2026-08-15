@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import twilio from "twilio";
 import { formatPrice } from "@/lib/format";
+import { getBooleanSetting, SETTING_KEYS } from "@/lib/settings";
 
 type OrderItemLike = { name: string; price: number; quantity: number };
 type OrderLike = {
@@ -22,6 +23,10 @@ const twilioClient =
     : null;
 
 async function sendEmail(to: string, subject: string, html: string) {
+  if (!(await getBooleanSetting(SETTING_KEYS.emailNotificationsEnabled))) {
+    console.log(`[notifications] Email notifications disabled in Settings — skipping "${subject}" to ${to}`);
+    return;
+  }
   if (!resend) {
     console.log(`[notifications] RESEND_API_KEY not set — skipping email "${subject}" to ${to}`);
     return;
@@ -34,6 +39,10 @@ async function sendEmail(to: string, subject: string, html: string) {
 }
 
 async function sendSMS(to: string, body: string) {
+  if (!(await getBooleanSetting(SETTING_KEYS.smsNotificationsEnabled))) {
+    console.log(`[notifications] SMS notifications disabled in Settings — skipping SMS to ${to}`);
+    return;
+  }
   if (!twilioClient || !process.env.TWILIO_PHONE_NUMBER) {
     console.log(`[notifications] Twilio not configured — skipping SMS to ${to}: ${body}`);
     return;

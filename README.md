@@ -173,6 +173,15 @@ src/store/cart.ts               Zustand cart store
   are matched by SKU (update) or created fresh, with per-row validation
   and an error report, plus automatic inventory-movement logging for any
   stock changes brought in by the import.
+- **Customer segments** (`/admin/customers`): filter chips for New (30d),
+  Returning, Frequent, VIP (tag-based), High value, Inactive 30/90d, Coupon
+  users, COD, and High return — computed live from order/tag/return data.
+  Each segment is exportable to CSV directly from the filtered view.
+- **Settings** (`/admin/settings`, admin-only): store name/address/phone
+  (used on shipping labels), and platform-wide toggles for email/SMS
+  notifications that genuinely gate sending (not just a UI checkbox) —
+  plus a read-only integration status panel showing which provider env
+  vars (Resend, Twilio, WhatsApp) are configured.
 - **Pagination, search & bulk actions**: Products, Orders, Customers, and
   Tickets lists are all searchable and paginated (50/page), each with
   multi-select bulk actions — activate/deactivate products, assign or

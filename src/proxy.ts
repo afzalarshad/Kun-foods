@@ -9,6 +9,7 @@ import { hasPermission, CONFINED_ROLES, type Permission } from "@/lib/permission
 const ROUTE_PERMISSIONS: [string, Permission[]][] = [
   ["/admin/users", ["users.manage"]],
   ["/admin/audit-log", ["audit.view"]],
+  ["/admin/settings", ["settings.manage"]],
   ["/admin/import-export", ["import_export.manage"]],
   ["/admin/warehouse", ["warehouse.pick", "warehouse.pack"]],
   ["/admin/pos", ["pos.operate"]],
