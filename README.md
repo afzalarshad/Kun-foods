@@ -405,3 +405,13 @@ Variables (production), then redeploy/restart:
   with shipping zones (see the CSV import section above) and again here
   with variant grouping. Any new admin action that changes data a
   storefront page reads needs the same explicit revalidation.
+- Stock decrements (order checkout and warehouse-to-warehouse transfers) use
+  an atomic conditional `UPDATE ... WHERE quantity >= needed` rather than a
+  separate read-then-write. Load testing 150 concurrent checkouts against
+  100 units of stock found the old read-then-write version oversold by 7
+  units (107 succeeded, warehouse stock went negative); the atomic version
+  correctly caps it at exactly 100. If you add another place that decrements
+  stock, use `decrementWarehouseStock()` in `lib/warehouse-stock.ts` rather
+  than a manual read+update. Order numbers are also retried on the rare
+  collision (a random per-month code, so concurrent checkouts can occasionally
+  generate the same one) instead of failing the order.

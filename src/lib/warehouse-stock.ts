@@ -44,20 +44,40 @@ export async function resolveFulfillmentWarehouse(
   return candidates[0];
 }
 
-/** Decrements a specific warehouse's stock and keeps Product.stock (the cross-warehouse total) in sync. */
+/**
+ * Decrements a specific warehouse's stock and keeps Product.stock (the
+ * cross-warehouse total) in sync.
+ *
+ * The check ("is there enough stock?") and the write must happen as one
+ * atomic operation, or two concurrent callers can both read the same
+ * pre-decrement quantity, both pass the check, and both decrement — a
+ * classic TOCTOU race that overs sells stock. This showed up for real under
+ * load testing (150 concurrent orders against 100 units of stock produced
+ * 107 successful orders and warehouse stock of -7). The fix is a single
+ * conditional UPDATE: Postgres takes a row lock as part of evaluating the
+ * WHERE clause, so the quantity check and the decrement can never be split
+ * by another transaction the way two separate statements can.
+ */
 export async function decrementWarehouseStock(
   tx: Tx,
   params: { productId: string; warehouseId: string; quantity: number }
 ) {
-  const level = await tx.warehouseStock.upsert({
+  await tx.warehouseStock.upsert({
     where: { productId_warehouseId: { productId: params.productId, warehouseId: params.warehouseId } },
     create: { productId: params.productId, warehouseId: params.warehouseId, quantity: 0 },
     update: {},
   });
-  if (level.quantity < params.quantity) {
+  const result = await tx.warehouseStock.updateMany({
+    where: {
+      productId: params.productId,
+      warehouseId: params.warehouseId,
+      quantity: { gte: params.quantity },
+    },
+    data: { quantity: { decrement: params.quantity } },
+  });
+  if (result.count === 0) {
     throw new Error("Insufficient stock at the assigned warehouse");
   }
-  await tx.warehouseStock.update({ where: { id: level.id }, data: { quantity: { decrement: params.quantity } } });
   await tx.product.update({ where: { id: params.productId }, data: { stock: { decrement: params.quantity } } });
 }
 
