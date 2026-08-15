@@ -8,6 +8,7 @@ import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 import { generateTicketNumber } from "@/lib/format";
 import { createAdminNotification } from "@/lib/admin-notifications";
+import { dispatchWebhookEvent } from "@/lib/webhooks";
 
 const categories = ["order", "payment", "delivery", "return", "refund", "product", "complaint", "general"] as const;
 const priorities = ["low", "normal", "high", "urgent"] as const;
@@ -72,6 +73,14 @@ export async function createTicket(formData: FormData) {
     message: `New ticket #${ticket.ticketNumber} — ${ticket.subject}`,
     link: `/admin/tickets/${ticket.id}`,
   });
+
+  dispatchWebhookEvent("ticket.created", {
+    id: ticket.id,
+    ticketNumber: ticket.ticketNumber,
+    subject: ticket.subject,
+    category: ticket.category,
+    priority: ticket.priority,
+  }).catch((err) => console.error("[createTicket] webhook dispatch failed:", err));
 
   revalidatePath("/admin/tickets");
   redirect(`/admin/tickets/${ticket.id}`);

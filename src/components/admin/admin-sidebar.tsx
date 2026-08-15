@@ -24,6 +24,7 @@ const links: NavLink[] = [
   { href: "/admin/shipping", label: "Shipping zones", icon: "🚚", permission: "shipping.manage" },
   { href: "/admin/shipments", label: "Shipments", icon: "📮", permission: "shipping.manage" },
   { href: "/admin/import-export", label: "Import/Export", icon: "🗂️", permission: "import_export.manage" },
+  { href: "/admin/webhooks", label: "Webhooks", icon: "🔗", permission: "settings.manage" },
   { href: "/admin/users", label: "Users", icon: "🔑", permission: "users.manage" },
   { href: "/admin/audit-log", label: "Audit Log", icon: "🕵️", permission: "audit.view" },
   { href: "/admin/settings", label: "Settings", icon: "⚙️", permission: "settings.manage" },

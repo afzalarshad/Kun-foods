@@ -353,6 +353,19 @@ model AdminNotification {
   createdAt DateTime @default(now())
 }
 
+model Webhook {
+  id              String    @id @default(cuid())
+  name            String
+  url             String
+  secret          String // HMAC-signs the payload (X-Kun-Signature header) so receivers can verify authenticity
+  events          String // JSON-encoded array of subscribed event names, e.g. ["order.created"]
+  active          Boolean   @default(true)
+  lastStatus      String? // e.g. "200" or "error: timeout"
+  lastTriggeredAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
 model HeldSale {
   id         String   @id @default(cuid())
   label      String? // optional note, e.g. "Ahmed - blue shirt"

@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 import { formatPrice } from "@/lib/format";
 import { PrintButton } from "@/components/admin/print-button";
+import { COURIERS } from "@/lib/providers/couriers";
 
-const couriers = ["leopards", "tcs", "postex", "manual"] as const;
+const couriers = COURIERS.map((c) => c.id);
 const statuses = ["pending", "booked", "picked_up", "in_transit", "delivered", "returned"] as const;
 
 const statusStyles: Record<string, string> = {

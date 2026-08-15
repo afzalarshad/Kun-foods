@@ -4,13 +4,7 @@ import { formatPrice } from "@/lib/format";
 import { requirePermission } from "@/lib/require-admin";
 import { PrintButton } from "@/components/admin/print-button";
 import { getSettings, SETTING_KEYS } from "@/lib/settings";
-
-const courierLabels: Record<string, string> = {
-  leopards: "Leopards Courier",
-  tcs: "TCS",
-  postex: "PostEx",
-  manual: "Manual / own rider",
-};
+import { COURIER_LABELS } from "@/lib/providers/couriers";
 
 export default async function ShippingLabelPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission("shipping.manage");
@@ -40,7 +34,7 @@ export default async function ShippingLabelPage({ params }: { params: Promise<{ 
       <div className="rounded-3xl border-2 border-ink bg-white p-8 print:rounded-none print:border-2">
         <div className="flex items-start justify-between border-b-2 border-dashed border-ink/20 pb-4">
           <div>
-            <p className="font-heading text-xl font-extrabold">{courierLabels[shipment.courier] ?? shipment.courier}</p>
+            <p className="font-heading text-xl font-extrabold">{COURIER_LABELS[shipment.courier as keyof typeof COURIER_LABELS] ?? shipment.courier}</p>
             <p className="mt-1 text-sm text-ink-soft">Booking / tracking #</p>
             <p className="font-mono text-lg font-bold">{shipment.trackingNumber ?? "—"}</p>
           </div>

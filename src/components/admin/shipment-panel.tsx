@@ -5,13 +5,7 @@ import { useState, useTransition } from "react";
 import type { Shipment } from "@prisma/client";
 import { formatPrice } from "@/lib/format";
 import { saveShipment, updateShipmentStatus, generateLabel } from "@/app/admin/(dashboard)/orders/shipment-actions";
-
-const couriers: { value: string; label: string }[] = [
-  { value: "leopards", label: "Leopards Courier" },
-  { value: "tcs", label: "TCS" },
-  { value: "postex", label: "PostEx" },
-  { value: "manual", label: "Manual / own rider" },
-];
+import { COURIERS, getCourierAdapter } from "@/lib/providers/couriers";
 
 const statuses = ["pending", "booked", "picked_up", "in_transit", "delivered", "returned"];
 
@@ -61,8 +55,8 @@ export function ShipmentPanel({
             defaultValue={shipment?.courier ?? "leopards"}
             className="min-w-[180px] rounded-2xl border border-ink/20 bg-white px-3 py-2 text-sm focus:border-chili focus:outline-none"
           >
-            {couriers.map((c) => (
-              <option key={c.value} value={c.value}>
+            {COURIERS.map((c) => (
+              <option key={c.id} value={c.id}>
                 {c.label}
               </option>
             ))}
@@ -136,6 +130,19 @@ export function ShipmentPanel({
             {shipment.codAmount !== null && (
               <span className="text-xs text-ink-soft">COD: {formatPrice(shipment.codAmount)}</span>
             )}
+            {shipment.trackingNumber &&
+              (() => {
+                const trackingUrl = getCourierAdapter(shipment.courier).trackingUrl(shipment.trackingNumber);
+                return trackingUrl ? (
+                  <Link
+                    href={trackingUrl}
+                    target="_blank"
+                    className="rounded-full border border-ink/20 px-3 py-1.5 text-xs font-semibold hover:bg-cream-dark"
+                  >
+                    Track shipment ↗
+                  </Link>
+                ) : null;
+              })()}
             <button
               onClick={() =>
                 startGenerating(async () => {
