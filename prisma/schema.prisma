@@ -14,6 +14,7 @@ model Category {
   slug        String      @unique
   description String?
   image       String?
+  active      Boolean     @default(true)
   products    Product[]
   promotions  Promotion[]
   createdAt   DateTime    @default(now())
@@ -34,6 +35,8 @@ model Product {
   images         String // JSON-encoded array of image URLs/emojis
   badge          String? // e.g. "Bestseller", "New", "Sale"
   weightLabel    String? // e.g. "500g", "1kg"
+  variantGroupId String? // products sharing this value render as one storefront listing with a size/weight picker
+  variantLabel   String? // shown on the picker for this specific variant, e.g. "500g", "1kg"
   stock          Int                 @default(100)
   featured       Boolean             @default(false)
   active         Boolean             @default(true) // hidden from storefront when false, without deleting history
@@ -47,6 +50,8 @@ model Product {
   stockTransfers StockTransfer[]
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
+
+  @@index([variantGroupId])
 }
 
 model Warehouse {

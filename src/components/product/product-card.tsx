@@ -47,7 +47,10 @@ export function ProductCard({ product }: { product: ProductCardType }) {
           </h3>
         </Link>
         {product.weightLabel && (
-          <p className="mt-0.5 text-sm text-ink-soft">{product.weightLabel}</p>
+          <p className="mt-0.5 text-sm text-ink-soft">
+            {product.weightLabel}
+            {product.variantCount > 1 && ` · ${product.variantCount} sizes`}
+          </p>
         )}
 
         <div className="mt-2 flex items-center gap-2">

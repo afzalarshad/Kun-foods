@@ -72,16 +72,21 @@ export default async function ReportsPage({
   const topProducts = [...productStats.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 8);
   const maxProductRevenue = Math.max(1, ...topProducts.map((p) => p.revenue));
 
-  // Revenue by category
-  const categoryStats = new Map<string, number>();
+  // Revenue & orders by category
+  const categoryStats = new Map<string, { revenue: number; orderIds: Set<string> }>();
   for (const o of nonCancelled) {
     for (const item of o.items) {
       const categoryName = item.product?.category?.name ?? "Bundles / other";
-      categoryStats.set(categoryName, (categoryStats.get(categoryName) ?? 0) + item.price * item.quantity);
+      const existing = categoryStats.get(categoryName) ?? { revenue: 0, orderIds: new Set<string>() };
+      existing.revenue += item.price * item.quantity;
+      existing.orderIds.add(o.id);
+      categoryStats.set(categoryName, existing);
     }
   }
-  const byCategory = [...categoryStats.entries()].sort((a, b) => b[1] - a[1]);
-  const maxCategoryRevenue = Math.max(1, ...byCategory.map(([, v]) => v));
+  const byCategory = [...categoryStats.entries()]
+    .map(([name, s]) => ({ name, revenue: s.revenue, orderCount: s.orderIds.size }))
+    .sort((a, b) => b.revenue - a.revenue);
+  const maxCategoryRevenue = Math.max(1, ...byCategory.map((c) => c.revenue));
 
   // Order status breakdown
   const statusCounts = new Map<string, number>();
@@ -181,19 +186,26 @@ export default async function ReportsPage({
         </div>
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
-          <h2 className="font-heading font-bold">Revenue by category</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-heading font-bold">Revenue & orders by category</h2>
+            <Link href="/admin/categories" className="text-sm font-semibold text-chili hover:underline">
+              Manage categories →
+            </Link>
+          </div>
           <div className="mt-4 flex flex-col gap-3">
             {byCategory.length === 0 && <p className="text-sm text-ink-soft">No sales in this period.</p>}
-            {byCategory.map(([name, revenue]) => (
-              <div key={name}>
+            {byCategory.map((c) => (
+              <div key={c.name}>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{name}</span>
-                  <span className="text-ink-soft">{formatPrice(revenue)}</span>
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-ink-soft">
+                    {formatPrice(c.revenue)} · {c.orderCount} order{c.orderCount === 1 ? "" : "s"}
+                  </span>
                 </div>
                 <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-cream-dark">
                   <div
                     className="h-full rounded-full bg-basil"
-                    style={{ width: `${Math.max(3, (revenue / maxCategoryRevenue) * 100)}%` }}
+                    style={{ width: `${Math.max(3, (c.revenue / maxCategoryRevenue) * 100)}%` }}
                   />
                 </div>
               </div>

@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { toProductCard, type ProductCard } from "@/lib/types";
+import { dedupeByVariantGroup } from "@/lib/variants";
 
 export async function getCategories() {
-  return prisma.category.findMany({ orderBy: { name: "asc" } });
+  return prisma.category.findMany({ where: { active: true }, orderBy: { name: "asc" } });
 }
 
 export async function getCategoryBySlug(slug: string) {
@@ -13,12 +14,12 @@ export async function getFeaturedProducts(limit = 8): Promise<ProductCard[]> {
   const products = await prisma.product.findMany({
     where: { featured: true, active: true },
     include: { category: true },
-    take: limit,
     orderBy: { createdAt: "desc" },
   });
-  return products.map(toProductCard);
+  return dedupeByVariantGroup(products).slice(0, limit).map(toProductCard);
 }
 
+/** Every active product row, one per variant — for the sitemap and static param generation, never deduped. */
 export async function getAllProducts(): Promise<ProductCard[]> {
   const products = await prisma.product.findMany({
     where: { active: true },
@@ -34,7 +35,7 @@ export async function getProductsByCategory(categorySlug: string): Promise<Produ
     include: { category: true },
     orderBy: { createdAt: "desc" },
   });
-  return products.map(toProductCard);
+  return dedupeByVariantGroup(products).map(toProductCard);
 }
 
 export async function getProductBySlug(slug: string) {
@@ -46,11 +47,28 @@ export async function getProductBySlug(slug: string) {
   return { ...toProductCard(product), description: product.description, stock: product.stock };
 }
 
-export async function getRelatedProducts(categorySlug: string, excludeSlug: string, limit = 4): Promise<ProductCard[]> {
+/** Sibling products in the same variant group (e.g. other sizes), for the size picker on a product page. */
+export async function getProductVariants(variantGroupId: string, excludeId: string) {
   const products = await prisma.product.findMany({
-    where: { category: { slug: categorySlug }, slug: { not: excludeSlug }, active: true },
-    include: { category: true },
-    take: limit,
+    where: { variantGroupId, active: true, id: { not: excludeId } },
+    select: { id: true, slug: true, variantLabel: true, price: true, stock: true },
+    orderBy: { price: "asc" },
   });
-  return products.map(toProductCard);
+  return products;
+}
+
+export async function getRelatedProducts(categorySlug: string, excludeSlug: string, limit = 4): Promise<ProductCard[]> {
+  const excludeProduct = await prisma.product.findUnique({ where: { slug: excludeSlug }, select: { variantGroupId: true } });
+  const products = await prisma.product.findMany({
+    where: {
+      category: { slug: categorySlug },
+      slug: { not: excludeSlug },
+      active: true,
+      ...(excludeProduct?.variantGroupId
+        ? { OR: [{ variantGroupId: null }, { variantGroupId: { not: excludeProduct.variantGroupId } }] }
+        : {}),
+    },
+    include: { category: true },
+  });
+  return dedupeByVariantGroup(products).slice(0, limit).map(toProductCard);
 }

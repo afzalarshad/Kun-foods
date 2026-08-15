@@ -13,9 +13,11 @@ export type ProductCard = {
   weightLabel: string | null;
   categorySlug: string;
   categoryName: string;
+  variantGroupId: string | null;
+  variantCount: number;
 };
 
-export function toProductCard(p: ProductWithCategory): ProductCard {
+export function toProductCard(p: ProductWithCategory & { variantCount?: number }): ProductCard {
   return {
     id: p.id,
     name: p.name,
@@ -27,5 +29,7 @@ export function toProductCard(p: ProductWithCategory): ProductCard {
     weightLabel: p.weightLabel,
     categorySlug: p.category.slug,
     categoryName: p.category.name,
+    variantGroupId: p.variantGroupId,
+    variantCount: p.variantCount ?? 1,
   };
 }

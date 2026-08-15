@@ -102,6 +102,20 @@ src/store/cart.ts               Zustand cart store
 
 - **Storefront**: home page, category/collection pages with sorting, product
   detail pages, a Deals & Bundles page, persistent cart drawer, cart page.
+- **Product variants**: give two or more products the same "variant group"
+  key on the product edit form (e.g. `biryani-masala`) and a label per
+  variant (e.g. "150g", "500g") to show them as one storefront listing with
+  a size picker instead of separate cards — the cheapest variant is the
+  representative card, with a "N sizes" badge. Each variant still keeps its
+  own SKU, price, and warehouse stock; picking a different size on the
+  product page jumps to that variant's own page. "Related products" and
+  category/homepage listings automatically dedupe by variant group.
+- **Categories** (`/admin/categories`): add, edit, deactivate, or delete the
+  categories products are organized into — deactivating drops a category
+  from storefront navigation without touching the products already in it;
+  deleting is blocked (auto-deactivates instead) while it still has
+  products, matching every other "safer delete" in this app. Reports shows
+  a revenue *and* order-count breakdown per category.
 - **Checkout**: address form with a per-city delivery rate, coupon code
   entry, cash-on-delivery or card (demo) payment, server-side
   price/stock/coupon/shipping recalculation, order confirmation page.
@@ -172,8 +186,11 @@ src/store/cart.ts               Zustand cart store
   notes, saved addresses, order count, total spent, and full order history.
   A global search bar in the admin header looks customers up instantly by
   name/phone/email/order number and opens a quick-view popup (lifetime
-  value, open orders, notes, WhatsApp/new-order shortcuts) — built for the
-  "customer calls in" workflow.
+  value, open orders, every past order — not just the 5 most recent — notes,
+  WhatsApp/new-order shortcuts) — built for the "customer calls in" workflow.
+  Customer names are clickable the same way from the Orders and Shipments
+  lists, so staff can pull up a customer's full order history without
+  leaving whatever list they're already working from.
 - **Roles & granular permissions** (`/admin/users`, admin-only): 13 roles —
   Admin, Manager, Sales, Customer Support, Warehouse Manager, Picker,
   Packer, Inventory Manager, Accountant, Marketing Manager, POS Operator,
@@ -379,3 +396,12 @@ Variables (production), then redeploy/restart:
   photography via `next/image` once you have assets.
 - Set up the notification env vars above once you're ready for real order
   emails/SMS — otherwise notifications are silently skipped.
+- Admin product create/edit/delete now revalidates the storefront's
+  `/products/[slug]` and `/collections/[slug]` pages directly. Those pages
+  use ISR (`revalidate = 60`), so without an explicit `revalidatePath` a
+  product edit (price, variant grouping, category, etc.) could take up to
+  60 seconds to show up on the storefront, or never show up at all if the
+  page had already been statically pre-rendered — this bit us once already
+  with shipping zones (see the CSV import section above) and again here
+  with variant grouping. Any new admin action that changes data a
+  storefront page reads needs the same explicit revalidation.

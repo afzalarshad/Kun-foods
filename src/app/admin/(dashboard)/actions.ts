@@ -22,6 +22,8 @@ const productSchema = z.object({
   supplier: z.string().max(150).optional(),
   reorderLevel: z.coerce.number().int().min(0).optional(),
   weightLabel: z.string().max(50).optional(),
+  variantGroupId: z.string().max(100).optional(),
+  variantLabel: z.string().max(50).optional(),
   badge: z.string().max(30).optional(),
   stock: z.coerce.number().int().min(0),
   featured: z.coerce.boolean().optional(),
@@ -42,6 +44,8 @@ function parseProductForm(formData: FormData) {
     supplier: formData.get("supplier") || undefined,
     reorderLevel: formData.get("reorderLevel") || undefined,
     weightLabel: formData.get("weightLabel") || undefined,
+    variantGroupId: formData.get("variantGroupId") || undefined,
+    variantLabel: formData.get("variantLabel") || undefined,
     badge: formData.get("badge") || undefined,
     stock: formData.get("stock"),
     featured: formData.get("featured") === "on",
@@ -73,6 +77,8 @@ export async function createProduct(formData: FormData) {
       images: JSON.stringify([parsed.image]),
       badge: parsed.badge || null,
       weightLabel: parsed.weightLabel || null,
+      variantGroupId: parsed.variantGroupId || null,
+      variantLabel: parsed.variantLabel || null,
       stock: parsed.stock,
       featured: parsed.featured ?? false,
       active: parsed.active ?? true,
@@ -111,6 +117,8 @@ export async function createProduct(formData: FormData) {
 
   revalidatePath("/admin/products");
   revalidatePath("/");
+  revalidatePath("/products/[slug]", "page");
+  revalidatePath("/collections/[slug]", "page");
   redirect("/admin/products");
 }
 
@@ -169,6 +177,8 @@ export async function updateProduct(productId: string, formData: FormData) {
       images: JSON.stringify([parsed.image]),
       badge: parsed.badge || null,
       weightLabel: parsed.weightLabel || null,
+      variantGroupId: parsed.variantGroupId || null,
+      variantLabel: parsed.variantLabel || null,
       featured: parsed.featured ?? false,
       active: parsed.active ?? true,
       categoryId: parsed.categoryId,
@@ -186,6 +196,8 @@ export async function updateProduct(productId: string, formData: FormData) {
 
   revalidatePath("/admin/products");
   revalidatePath("/");
+  revalidatePath("/products/[slug]", "page");
+  revalidatePath("/collections/[slug]", "page");
   redirect("/admin/products");
 }
 
@@ -214,6 +226,8 @@ export async function deleteProduct(productId: string) {
     });
     revalidatePath("/admin/products");
     revalidatePath("/");
+    revalidatePath("/products/[slug]", "page");
+    revalidatePath("/collections/[slug]", "page");
     return {
       message: `"${before.name}" has order or inventory history, so it was deactivated (hidden from the storefront) instead of deleted, to keep that history intact.`,
     };
@@ -231,6 +245,8 @@ export async function deleteProduct(productId: string) {
 
   revalidatePath("/admin/products");
   revalidatePath("/");
+  revalidatePath("/products/[slug]", "page");
+  revalidatePath("/collections/[slug]", "page");
 }
 
 const statuses = ["pending", "processing", "packed", "shipped", "delivered", "cancelled"] as const;

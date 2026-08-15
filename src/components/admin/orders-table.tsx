@@ -6,6 +6,7 @@ import type { Order } from "@prisma/client";
 import { formatPrice } from "@/lib/format";
 import { bulkAssignOrders, bulkSetOrderStatus } from "@/app/admin/(dashboard)/orders/bulk-actions";
 import { SLA_STATE_STYLES, SLA_STATE_LABELS, type SlaState } from "@/lib/sla";
+import { CustomerNameLink } from "@/components/admin/customer-name-link";
 
 const statusStyles: Record<string, string> = {
   pending: "bg-saffron/20 text-saffron-dark",
@@ -116,7 +117,9 @@ export function OrdersTable({
                     #{order.orderNumber}
                   </Link>
                 </td>
-                <td className="px-6 py-3">{order.customerName}</td>
+                <td className="px-6 py-3">
+                  <CustomerNameLink customerId={order.customerId} customerName={order.customerName} />
+                </td>
                 <td className="px-6 py-3">
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${

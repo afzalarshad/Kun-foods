@@ -11,7 +11,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     include: {
       orders: {
         orderBy: { createdAt: "desc" },
-        take: 5,
         include: { shipment: { select: { courier: true, trackingNumber: true } } },
       },
       tags: true,

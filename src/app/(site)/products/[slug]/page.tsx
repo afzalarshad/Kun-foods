@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { ProductImage } from "@/components/product/product-image";
 import { ProductCard } from "@/components/product/product-card";
 import { AddToCart } from "@/components/product/add-to-cart";
-import { getAllProducts, getProductBySlug, getRelatedProducts } from "@/lib/data";
+import { getAllProducts, getProductBySlug, getProductVariants, getRelatedProducts } from "@/lib/data";
 import { formatPrice } from "@/lib/format";
 import { whatsappLink } from "@/components/whatsapp-button";
 
@@ -38,7 +38,10 @@ export default async function ProductPage({
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const related = await getRelatedProducts(product.categorySlug, product.slug);
+  const [related, variants] = await Promise.all([
+    getRelatedProducts(product.categorySlug, product.slug),
+    product.variantGroupId ? getProductVariants(product.variantGroupId, product.id) : Promise.resolve([]),
+  ]);
   const waLink = whatsappLink(
     `Hi! I'd like to order ${product.name} (${formatPrice(product.price)}) from Kun Foods.`
   );
@@ -85,6 +88,30 @@ export default async function ProductPage({
           </h1>
           {product.weightLabel && (
             <p className="mt-2 text-ink-soft">{product.weightLabel}</p>
+          )}
+
+          {variants.length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Size</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-cream">
+                  {product.weightLabel ?? "This size"}
+                </span>
+                {variants.map((v) => (
+                  <Link
+                    key={v.id}
+                    href={`/products/${v.slug}`}
+                    className={`rounded-full border-2 px-4 py-2 text-sm font-semibold ${
+                      v.stock > 0
+                        ? "border-ink/20 hover:border-ink"
+                        : "border-ink/10 text-ink-soft/50 line-through"
+                    }`}
+                  >
+                    {v.variantLabel ?? formatPrice(v.price)}
+                  </Link>
+                ))}
+              </div>
+            </div>
           )}
 
           <div className="mt-4 flex items-center gap-3">

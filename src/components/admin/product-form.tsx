@@ -120,6 +120,35 @@ export function ProductForm({
         </div>
       </div>
 
+      <div className="rounded-2xl border border-dashed border-ink/20 p-4">
+        <p className="text-sm font-medium">Variant group (optional)</p>
+        <p className="mt-0.5 text-xs text-ink-soft">
+          Give two or more products the same group key (e.g. <code className="rounded bg-cream-dark px-1">biryani-masala</code>)
+          to show them as one storefront listing with a size picker, instead of separate cards. Each still keeps
+          its own price, SKU, and stock.
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium">Group key</label>
+            <input
+              name="variantGroupId"
+              placeholder="e.g. biryani-masala"
+              defaultValue={product?.variantGroupId ?? ""}
+              className="w-full rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium">Label on picker</label>
+            <input
+              name="variantLabel"
+              placeholder="e.g. 500g"
+              defaultValue={product?.variantLabel ?? ""}
+              className="w-full rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="mb-1.5 block text-sm font-medium">SKU (optional)</label>
