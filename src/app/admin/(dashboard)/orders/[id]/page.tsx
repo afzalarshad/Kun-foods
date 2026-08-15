@@ -91,10 +91,17 @@ export default async function AdminOrderDetailPage({
         </div>
         {order.discount > 0 && (
           <div className="mt-1 flex justify-between text-sm text-basil-dark">
-            <span>Discount</span>
+            <span>Coupon discount</span>
             <span>−{formatPrice(order.discount)}</span>
           </div>
         )}
+        {order.promotionsJson &&
+          (JSON.parse(order.promotionsJson) as { id: string; name: string; discount: number }[]).map((p) => (
+            <div key={p.id} className="mt-1 flex justify-between text-sm text-saffron-dark">
+              <span>🎉 {p.name}</span>
+              <span>−{formatPrice(p.discount)}</span>
+            </div>
+          ))}
         <div className="mt-1 flex justify-between text-sm text-ink-soft">
           <span>Shipping</span>
           <span>{order.shipping === 0 ? "Free" : formatPrice(order.shipping)}</span>

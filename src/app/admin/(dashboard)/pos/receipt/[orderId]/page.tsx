@@ -21,6 +21,9 @@ export default async function PosReceiptPage({ params }: { params: Promise<{ ord
 
   const paidTotal = order.payments.filter((p) => p.status === "paid").reduce((sum, p) => sum + p.amount, 0);
   const due = order.total - paidTotal;
+  const appliedPromotions: { id: string; name: string; discount: number }[] = order.promotionsJson
+    ? JSON.parse(order.promotionsJson)
+    : [];
 
   return (
     <div className="mx-auto max-w-md">
@@ -69,10 +72,16 @@ export default async function PosReceiptPage({ params }: { params: Promise<{ ord
           </div>
           {order.discount > 0 && (
             <div className="flex justify-between">
-              <span>Discount</span>
+              <span>Coupon</span>
               <span>-{formatPrice(order.discount)}</span>
             </div>
           )}
+          {appliedPromotions.map((p) => (
+            <div key={p.id} className="flex justify-between">
+              <span>{p.name}</span>
+              <span>-{formatPrice(p.discount)}</span>
+            </div>
+          ))}
           {order.shipping > 0 && (
             <div className="flex justify-between">
               <span>Shipping</span>

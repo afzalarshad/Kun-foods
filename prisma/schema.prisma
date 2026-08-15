@@ -8,13 +8,14 @@ datasource db {
 }
 
 model Category {
-  id          String    @id @default(cuid())
+  id          String      @id @default(cuid())
   name        String
-  slug        String    @unique
+  slug        String      @unique
   description String?
   image       String?
   products    Product[]
-  createdAt   DateTime  @default(now())
+  promotions  Promotion[]
+  createdAt   DateTime    @default(now())
 }
 
 model Product {
@@ -40,6 +41,7 @@ model Product {
   orderItems     OrderItem[]
   bundleItems    BundleItem[]
   movements      InventoryMovement[]
+  promotions     Promotion[]
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 }
@@ -79,6 +81,28 @@ model Coupon {
   expiresAt   DateTime?
   orders      Order[]
   createdAt   DateTime  @default(now())
+}
+
+model Promotion {
+  id                 String    @id @default(cuid())
+  name               String
+  type               String // "percentage_off" | "fixed_off" | "bogo"
+  scope              String // "all" | "category" | "product" ("bogo" always implies "product")
+  categoryId         String?
+  category           Category? @relation(fields: [categoryId], references: [id])
+  productId          String?
+  product            Product?  @relation(fields: [productId], references: [id])
+  segment            String? // optional SegmentId (src/lib/segments.ts); null = every customer
+  value              Int? // percentage_off: 1-100; fixed_off: paisa amount
+  buyQuantity        Int? // bogo: buy this many
+  getQuantity        Int? // bogo: get this many at getDiscountPercent off
+  getDiscountPercent Int? // bogo: 100 = free, 50 = half off, etc.
+  startsAt           DateTime?
+  endsAt             DateTime?
+  active             Boolean   @default(true)
+  priority           Int       @default(0) // lower runs first; mainly for reporting order, discounts always stack
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
 model Customer {
@@ -151,6 +175,8 @@ model Order {
   discount           Int               @default(0)
   couponId           String?
   coupon             Coupon?           @relation(fields: [couponId], references: [id])
+  promoDiscount      Int               @default(0)
+  promotionsJson     String? // JSON-encoded array of {id, name, discount} auto-applied promotions
   shipping           Int
   total              Int
   items              OrderItem[]

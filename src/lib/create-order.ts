@@ -3,6 +3,7 @@ import { generateOrderNumber } from "@/lib/format";
 import { getShippingRate } from "@/lib/shipping";
 import { notifyOrderCreated } from "@/lib/notifications";
 import { notifyLowStockIfNeeded } from "@/lib/admin-notifications";
+import { computePromotionsForCart } from "@/lib/promotions";
 
 export type CreateOrderInput = {
   customerName: string;
@@ -99,11 +100,22 @@ export async function createOrder(input: CreateOrderInput) {
     couponId = coupon.id;
   }
 
+  const promoProductMap = new Map(
+    directProducts.map((p) => [p.id, { id: p.id, price: p.price, categoryId: p.categoryId }])
+  );
+  const { discount: rawPromoDiscount, applied: appliedPromotions } = await computePromotionsForCart({
+    items: input.items,
+    productMap: promoProductMap,
+    subtotal,
+    email: input.email,
+  });
+  const promoDiscount = Math.min(rawPromoDiscount, subtotal - discount);
+
   // An empty city means a walk-in/pickup POS sale — no delivery, no shipping charge.
   // Only look up a real shipping rate when a city was actually given.
   const rawCity = input.city.trim();
-  const shipping = rawCity ? await getShippingRate(rawCity, subtotal - discount) : 0;
-  const total = subtotal - discount + shipping;
+  const shipping = rawCity ? await getShippingRate(rawCity, subtotal - discount - promoDiscount) : 0;
+  const total = subtotal - discount - promoDiscount + shipping;
 
   const city = rawCity || "Walk-in / Pickup";
   const address = input.address.trim() || "In-store purchase";
@@ -142,6 +154,8 @@ export async function createOrder(input: CreateOrderInput) {
         subtotal,
         discount,
         couponId,
+        promoDiscount,
+        promotionsJson: appliedPromotions.length > 0 ? JSON.stringify(appliedPromotions) : null,
         shipping,
         total,
         items: {

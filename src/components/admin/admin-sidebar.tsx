@@ -16,6 +16,7 @@ const links: NavLink[] = [
   { href: "/admin/warehouse", label: "Warehouse", icon: "📲", permission: "warehouse.pick" },
   { href: "/admin/bundles", label: "Bundles", icon: "🎁", permission: "promotions.manage" },
   { href: "/admin/coupons", label: "Coupons", icon: "🏷️", permission: "promotions.manage" },
+  { href: "/admin/promotions", label: "Promotions", icon: "🎉", permission: "promotions.manage" },
   { href: "/admin/orders", label: "Orders", icon: "📦", permission: "orders.view" },
   { href: "/admin/customers", label: "Customers", icon: "👥", permission: "customers.view" },
   { href: "/admin/tickets", label: "Support", icon: "🎫", permission: "support.manage" },

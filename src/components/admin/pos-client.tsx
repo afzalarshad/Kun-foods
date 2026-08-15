@@ -65,9 +65,35 @@ export function PosClient({
   const [holding, setHolding] = useState(false);
   const [heldOpen, setHeldOpen] = useState(false);
 
+  const [appliedPromotions, setAppliedPromotions] = useState<{ id: string; name: string; discount: number }[]>([]);
+  const promoDiscount = appliedPromotions.reduce((sum, p) => sum + p.discount, 0);
+
   useEffect(() => {
     scanInputRef.current?.focus();
   }, []);
+
+  // Promotions apply automatically (no code) — recompute whenever the cart or email changes.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      if (cart.length === 0) {
+        setAppliedPromotions([]);
+        return;
+      }
+      fetch("/api/promotions/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: cart.map((i) => ({ type: i.type, id: i.id, quantity: i.quantity })),
+          email: email.includes("@") ? email : undefined,
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => setAppliedPromotions(data.applied ?? []))
+        .catch(() => setAppliedPromotions([]));
+    }, 350);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(cart.map((i) => [i.id, i.quantity])), email]);
 
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(query.toLowerCase())
@@ -113,8 +139,8 @@ export function PosClient({
   }
 
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const shipping = city.trim() ? getShippingForCity(zones, city, subtotal - couponDiscount) : 0;
-  const total = subtotal - couponDiscount + shipping;
+  const shipping = city.trim() ? getShippingForCity(zones, city, subtotal - couponDiscount - promoDiscount) : 0;
+  const total = subtotal - couponDiscount - promoDiscount + shipping;
 
   const paymentLinesTotal = paymentLines.reduce((sum, l) => sum + (Number(l.amount) || 0) * 100, 0);
   const dueAfterSplit = total - paymentLinesTotal;
@@ -461,14 +487,31 @@ export function PosClient({
         </div>
         {couponError && <p className="mt-1 text-xs text-chili">{couponError}</p>}
 
+        {appliedPromotions.length > 0 && (
+          <div className="mt-3 flex flex-col gap-1 rounded-xl bg-saffron/10 px-3 py-2">
+            {appliedPromotions.map((p) => (
+              <div key={p.id} className="flex items-center justify-between text-xs">
+                <span className="font-medium text-saffron-dark">🎉 {p.name}</span>
+                <span className="text-saffron-dark">−{formatPrice(p.discount)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="mt-4 flex justify-between text-sm text-ink-soft">
           <span>Subtotal</span>
           <span>{formatPrice(subtotal)}</span>
         </div>
         {couponDiscount > 0 && (
           <div className="mt-1 flex justify-between text-sm text-basil-dark">
-            <span>Discount</span>
+            <span>Coupon discount</span>
             <span>−{formatPrice(couponDiscount)}</span>
+          </div>
+        )}
+        {promoDiscount > 0 && (
+          <div className="mt-1 flex justify-between text-sm text-saffron-dark">
+            <span>Promotions</span>
+            <span>−{formatPrice(promoDiscount)}</span>
           </div>
         )}
         <div className="mt-1 flex justify-between text-sm text-ink-soft">

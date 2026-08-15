@@ -104,6 +104,16 @@ src/store/cart.ts               Zustand cart store
   is set.
 - **Coupons**: percentage or fixed-amount discount codes with an optional
   minimum order, usage limit, and expiry date — managed at `/admin/coupons`.
+- **Promotions engine** (`/admin/promotions`): automatic discounts that apply
+  at checkout and POS with no code needed, on top of coupons. Percentage or
+  fixed-amount off the entire order, one category, or one product; BOGO deals
+  (buy X get Y at a chosen % off — e.g. "buy 2 get 1 free"); optional
+  targeting to one of the 10 dynamic customer segments (e.g. only VIPs, or
+  only inactive-90-day customers to win them back); and an optional
+  start/end schedule for flash sales. Matching promotions stack and are
+  shown live in the cart summary as they apply, then persisted on the order
+  (`Order.promoDiscount` / `promotionsJson`) for the receipt and order detail
+  page.
 - **Bundles**: grouped products sold at a special price, shown at `/deals`
   and manageable at `/admin/bundles`.
 - **Admin panel** (`/admin`): dashboard stats, full product/coupon/bundle
