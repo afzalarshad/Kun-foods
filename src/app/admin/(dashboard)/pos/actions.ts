@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { createOrder, OrderError } from "@/lib/create-order";
 
 const posOrderSchema = z.object({
@@ -27,7 +27,7 @@ const posOrderSchema = z.object({
 export type PosOrderInput = z.infer<typeof posOrderSchema>;
 
 export async function createPosOrder(input: PosOrderInput) {
-  await requireAdmin();
+  await requirePermission("pos.operate");
   const parsed = posOrderSchema.parse(input);
 
   try {

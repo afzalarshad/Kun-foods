@@ -2,12 +2,14 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { CustomerQuickSearch } from "@/components/admin/customer-quick-search";
+import { hasPermission } from "@/lib/permissions";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user) redirect("/admin/login");
 
   const role = session.user.role ?? "staff";
+  const canSearchCustomers = hasPermission(role, "customers.view");
 
   return (
     <div className="flex min-h-screen bg-cream-dark/40 text-ink">
@@ -15,7 +17,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <AdminSidebar userEmail={session.user.email ?? ""} role={role} />
       </div>
       <div className="flex-1">
-        {role !== "pos" && (
+        {canSearchCustomers && (
           <div className="flex items-center border-b border-ink/10 bg-cream px-6 py-3 sm:px-10 print:hidden">
             <CustomerQuickSearch />
           </div>

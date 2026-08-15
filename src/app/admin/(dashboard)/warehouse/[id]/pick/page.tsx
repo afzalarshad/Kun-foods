@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/require-admin";
+import { requireAnyPermission } from "@/lib/require-admin";
 import { WarehousePickScanner } from "@/components/admin/warehouse-pick-scanner";
 
 export default async function WarehousePickOrderPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireRole(["admin", "staff"]);
+  await requireAnyPermission(["warehouse.pick", "warehouse.pack"]);
   const { id } = await params;
 
   const order = await prisma.order.findUnique({

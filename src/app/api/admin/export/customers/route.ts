@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { toCsv } from "@/lib/csv";
 
 export async function GET() {
-  await requireAdmin();
+  await requirePermission("customers.export");
 
   const customers = await prisma.customer.findMany({
     include: { orders: { select: { total: true, status: true } } },

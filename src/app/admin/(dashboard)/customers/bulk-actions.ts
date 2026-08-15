@@ -3,13 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 
 const idsSchema = z.array(z.string().min(1)).min(1);
 
 export async function bulkAddCustomerTag(customerIds: string[], tag: string) {
-  const session = await requireAdmin();
+  const session = await requirePermission("customers.edit");
   const actorEmail = session.user.email ?? "unknown";
   const ids = idsSchema.parse(customerIds);
   const cleanTag = z.string().min(1).max(40).parse(tag.trim());

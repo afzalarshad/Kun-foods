@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 import { notifyOrderStatusChanged } from "@/lib/notifications";
 
@@ -11,7 +11,7 @@ import { notifyOrderStatusChanged } from "@/lib/notifications";
  * POST /api/warehouse/orders/[id]/picked
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await requireRole(["admin", "staff"]);
+  const session = await requirePermission("warehouse.pack");
   const actorEmail = session.user.email ?? "unknown";
   const { id: orderId } = await params;
 

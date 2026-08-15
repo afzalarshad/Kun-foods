@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 
 /**
  * Scans one unit of a barcode/SKU against an order's line items, moving
@@ -9,7 +9,7 @@ import { requireRole } from "@/lib/require-admin";
  * POST /api/warehouse/orders/[id]/scan   body: { "code": "<barcode or sku>" }
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireRole(["admin", "staff"]);
+  await requirePermission("warehouse.pick");
   const { id: orderId } = await params;
   const body = await request.json().catch(() => null);
   const code = typeof body?.code === "string" ? body.code.trim() : "";

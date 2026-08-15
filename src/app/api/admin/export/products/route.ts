@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { toCsv } from "@/lib/csv";
 
 export async function GET() {
-  await requireAdmin();
+  await requirePermission("products.export");
 
   const products = await prisma.product.findMany({
     include: { category: true },

@@ -3,14 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 
 const methods = ["cod", "cash", "card", "bank_transfer", "other"] as const;
 const statuses = ["pending", "paid", "refunded", "partially_refunded"] as const;
 
 export async function createPayment(orderId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("payments.manage");
   const actorEmail = session.user.email ?? "unknown";
 
   const parsed = z
@@ -53,7 +53,7 @@ export async function createPayment(orderId: string, formData: FormData) {
 }
 
 export async function updatePaymentStatus(paymentId: string, orderId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("payments.manage");
   const actorEmail = session.user.email ?? "unknown";
   const status = z.enum(statuses).parse(formData.get("status"));
 

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/require-admin";
+import { requireAnyPermission } from "@/lib/require-admin";
 
 /**
  * Barcode/SKU scan lookup for a warehouse pick-and-pack app.
  * GET /api/warehouse/products/lookup?barcode=XXXX  (or ?sku=XXXX)
  */
 export async function GET(request: Request) {
-  await requireRole(["admin", "staff"]);
+  await requireAnyPermission(["warehouse.pick", "warehouse.pack"]);
   const { searchParams } = new URL(request.url);
   const barcode = searchParams.get("barcode")?.trim();
   const sku = searchParams.get("sku")?.trim();

@@ -1,9 +1,9 @@
-import { requireRole } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { UserForm } from "@/components/admin/user-form";
 import { createUser } from "@/app/admin/(dashboard)/users/actions";
 
 export default async function NewUserPage() {
-  await requireRole(["admin"]);
+  await requirePermission("users.manage");
 
   return (
     <div>

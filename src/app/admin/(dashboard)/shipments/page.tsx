@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { formatPrice } from "@/lib/format";
 import { PrintButton } from "@/components/admin/print-button";
 
@@ -28,7 +28,7 @@ export default async function ShipmentsPage({
 }: {
   searchParams: Promise<{ courier?: string; status?: string }>;
 }) {
-  await requireAdmin();
+  await requirePermission("shipping.manage");
   const { courier, status } = await searchParams;
 
   const where = {

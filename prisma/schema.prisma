@@ -283,7 +283,7 @@ model AdminUser {
   email        String   @unique
   passwordHash String
   name         String
-  role         String   @default("admin") // "admin" | "staff" | "pos"
+  role         String   @default("admin") // see src/lib/permissions.ts ROLE_PERMISSIONS for the full role -> permission map
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 }

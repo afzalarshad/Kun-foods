@@ -3,14 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 
 const idsSchema = z.array(z.string().min(1)).min(1);
 const statuses = ["open", "pending", "in_progress", "waiting_on_customer", "resolved", "closed"] as const;
 
 export async function bulkSetTicketStatus(ticketIds: string[], status: string) {
-  const session = await requireAdmin();
+  const session = await requirePermission("support.manage");
   const actorEmail = session.user.email ?? "unknown";
   const ids = idsSchema.parse(ticketIds);
   const parsedStatus = z.enum(statuses).parse(status);
@@ -28,7 +28,7 @@ export async function bulkSetTicketStatus(ticketIds: string[], status: string) {
 }
 
 export async function bulkAssignTickets(ticketIds: string[], assignedTo: string) {
-  const session = await requireAdmin();
+  const session = await requirePermission("support.manage");
   const actorEmail = session.user.email ?? "unknown";
   const ids = idsSchema.parse(ticketIds);
   const cleanAssignee = assignedTo.trim() || null;

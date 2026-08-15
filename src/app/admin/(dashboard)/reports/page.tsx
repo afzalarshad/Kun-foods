@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { formatPrice } from "@/lib/format";
 
 const RANGES = [
@@ -22,7 +22,7 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<{ days?: string }>;
 }) {
-  await requireAdmin();
+  await requirePermission("reports.view");
   const { days: daysParam } = await searchParams;
   const days = [7, 30, 90].includes(Number(daysParam)) ? Number(daysParam) : 30;
 

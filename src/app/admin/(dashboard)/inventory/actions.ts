@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 
 const adjustSchema = z.object({
@@ -13,7 +13,7 @@ const adjustSchema = z.object({
 });
 
 export async function adjustStock(formData: FormData): Promise<{ error?: string }> {
-  const session = await requireRole(["admin", "staff"]);
+  const session = await requirePermission("inventory.adjust");
   const parsed = adjustSchema.parse({
     productId: formData.get("productId"),
     quantity: formData.get("quantity"),

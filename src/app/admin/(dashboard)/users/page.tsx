@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { deleteUser } from "@/app/admin/(dashboard)/users/actions";
 
@@ -11,7 +11,7 @@ const roleStyles: Record<string, string> = {
 };
 
 export default async function AdminUsersPage() {
-  const session = await requireRole(["admin"]);
+  const session = await requirePermission("users.manage");
   const users = await prisma.adminUser.findMany({ orderBy: { createdAt: "asc" } });
 
   return (

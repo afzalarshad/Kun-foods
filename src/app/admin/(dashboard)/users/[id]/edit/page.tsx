@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { UserForm } from "@/components/admin/user-form";
 import { updateUser } from "@/app/admin/(dashboard)/users/actions";
 
@@ -9,7 +9,7 @@ export default async function EditUserPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole(["admin"]);
+  await requirePermission("users.manage");
   const { id } = await params;
   const user = await prisma.adminUser.findUnique({ where: { id } });
   if (!user) notFound();

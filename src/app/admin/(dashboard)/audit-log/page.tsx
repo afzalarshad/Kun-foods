@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 
 const PAGE_SIZE = 50;
 
@@ -8,7 +8,7 @@ export default async function AuditLogPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  await requireRole(["admin"]);
+  await requirePermission("audit.view");
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
 

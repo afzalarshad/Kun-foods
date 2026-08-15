@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 
 const couriers = ["leopards", "tcs", "postex", "manual"] as const;
@@ -17,7 +17,7 @@ const bookSchema = z.object({
 });
 
 export async function saveShipment(orderId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("shipping.manage");
   const actorEmail = session.user.email ?? "unknown";
   const parsed = bookSchema.parse({
     courier: formData.get("courier"),
@@ -53,7 +53,7 @@ export async function saveShipment(orderId: string, formData: FormData) {
 }
 
 export async function updateShipmentStatus(orderId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("shipping.manage");
   const actorEmail = session.user.email ?? "unknown";
   const status = z.enum(shipmentStatuses).parse(formData.get("status"));
 
@@ -75,7 +75,7 @@ export async function updateShipmentStatus(orderId: string, formData: FormData) 
 }
 
 export async function generateLabel(orderId: string): Promise<{ error?: string }> {
-  const session = await requireAdmin();
+  const session = await requirePermission("shipping.manage");
   const actorEmail = session.user.email ?? "unknown";
 
   const shipment = await prisma.shipment.findUnique({ where: { orderId } });

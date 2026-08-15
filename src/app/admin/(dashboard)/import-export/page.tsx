@@ -1,8 +1,8 @@
-import { requireRole } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { ProductImportForm } from "@/components/admin/product-import-form";
 
 export default async function ImportExportPage() {
-  await requireRole(["admin"]);
+  await requirePermission("import_export.manage");
 
   return (
     <div className="max-w-3xl">

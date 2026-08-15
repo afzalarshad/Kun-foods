@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, slugify } from "@/lib/require-admin";
+import { requirePermission, slugify } from "@/lib/require-admin";
 import { parseCsv } from "@/lib/csv";
 import { logAudit } from "@/lib/audit";
 
@@ -13,7 +13,7 @@ function toRupeeCents(value: string): number | null {
 }
 
 export async function POST(request: Request) {
-  const session = await requireAdmin();
+  const session = await requirePermission("import_export.manage");
   const actorEmail = session.user.email ?? "unknown";
 
   const formData = await request.formData();

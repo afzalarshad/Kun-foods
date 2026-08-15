@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { TicketsTable } from "@/components/admin/tickets-table";
 
 const statuses = ["open", "pending", "in_progress", "waiting_on_customer", "resolved", "closed"] as const;
@@ -11,7 +11,7 @@ export default async function TicketsPage({
 }: {
   searchParams: Promise<{ status?: string; page?: string }>;
 }) {
-  await requireAdmin();
+  await requirePermission("support.manage");
   const { status, page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
 

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { PrintButton } from "@/components/admin/print-button";
 
 const courierLabels: Record<string, string> = {
@@ -12,7 +12,7 @@ const courierLabels: Record<string, string> = {
 };
 
 export default async function ShippingLabelPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  await requirePermission("shipping.manage");
   const { id } = await params;
 
   const order = await prisma.order.findUnique({

@@ -3,13 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 
 const idsSchema = z.array(z.string().min(1)).min(1);
 
 export async function bulkSetProductActive(productIds: string[], active: boolean) {
-  const session = await requireAdmin();
+  const session = await requirePermission("products.manage");
   const actorEmail = session.user.email ?? "unknown";
   const ids = idsSchema.parse(productIds);
 

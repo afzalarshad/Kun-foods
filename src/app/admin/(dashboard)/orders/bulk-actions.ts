@@ -3,14 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 
 const idsSchema = z.array(z.string().min(1)).min(1);
 const statuses = ["pending", "processing", "shipped", "delivered", "cancelled"] as const;
 
 export async function bulkAssignOrders(orderIds: string[], assignedTo: string) {
-  const session = await requireAdmin();
+  const session = await requirePermission("orders.edit");
   const actorEmail = session.user.email ?? "unknown";
   const ids = idsSchema.parse(orderIds);
   const cleanAssignee = assignedTo.trim() || null;
@@ -30,7 +30,7 @@ export async function bulkAssignOrders(orderIds: string[], assignedTo: string) {
 // Intentionally skips customer notifications for bulk changes -- emailing/texting
 // dozens of customers at once from a single click is surprising, not helpful.
 export async function bulkSetOrderStatus(orderIds: string[], status: string) {
-  const session = await requireAdmin();
+  const session = await requirePermission("orders.edit");
   const actorEmail = session.user.email ?? "unknown";
   const ids = idsSchema.parse(orderIds);
   const parsedStatus = z.enum(statuses).parse(status);

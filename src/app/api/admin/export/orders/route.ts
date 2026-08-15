@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { toCsv } from "@/lib/csv";
 
 export async function GET(request: Request) {
-  await requireAdmin();
+  await requirePermission("orders.view");
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status") || undefined;
   const from = searchParams.get("from") || undefined;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/require-admin";
+import { requireAnyPermission } from "@/lib/require-admin";
 
 /**
  * Pick queue for a warehouse pick-and-pack app: orders that are confirmed
@@ -8,7 +8,7 @@ import { requireRole } from "@/lib/require-admin";
  * GET /api/warehouse/orders/queue
  */
 export async function GET() {
-  await requireRole(["admin", "staff"]);
+  await requireAnyPermission(["warehouse.pick", "warehouse.pack"]);
 
   const orders = await prisma.order.findMany({
     where: { status: "processing" },

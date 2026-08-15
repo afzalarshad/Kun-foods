@@ -3,13 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 
 const returnStatuses = ["requested", "approved", "rejected", "received", "refunded"] as const;
 
 export async function createReturn(orderId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("orders.refund");
   const reason = z.string().min(3).max(500).parse(formData.get("reason"));
 
   const created = await prisma.return.create({
@@ -28,7 +28,7 @@ export async function createReturn(orderId: string, formData: FormData) {
 }
 
 export async function updateReturnStatus(returnId: string, orderId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("orders.refund");
   const status = z.enum(returnStatuses).parse(formData.get("status"));
   const actorEmail = session.user.email ?? "unknown";
   const before = await prisma.return.findUniqueOrThrow({ where: { id: returnId } });
@@ -77,7 +77,7 @@ export async function updateReturnStatus(returnId: string, orderId: string, form
 const priorityEnum = z.enum(["low", "normal", "high", "urgent"]);
 
 export async function updateOrderMeta(orderId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("orders.refund");
   const priority = priorityEnum.parse(formData.get("priority"));
   const assignedTo = (formData.get("assignedTo") as string | null)?.trim() || null;
 

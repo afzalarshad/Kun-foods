@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 import { generateTicketNumber } from "@/lib/format";
 
@@ -13,7 +13,7 @@ const priorities = ["low", "normal", "high", "urgent"] as const;
 const statuses = ["open", "pending", "in_progress", "waiting_on_customer", "resolved", "closed"] as const;
 
 export async function createTicket(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("support.manage");
   const actorEmail = session.user.email ?? "unknown";
 
   const parsed = z
@@ -71,7 +71,7 @@ export async function createTicket(formData: FormData) {
 }
 
 export async function addTicketMessage(ticketId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("support.manage");
   const actorEmail = session.user.email ?? "unknown";
   const message = z.string().min(1).max(3000).parse(formData.get("message"));
   const internal = formData.get("internal") === "on";
@@ -85,7 +85,7 @@ export async function addTicketMessage(ticketId: string, formData: FormData) {
 }
 
 export async function updateTicketMeta(ticketId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("support.manage");
   const actorEmail = session.user.email ?? "unknown";
   const status = z.enum(statuses).parse(formData.get("status"));
   const priority = z.enum(priorities).parse(formData.get("priority"));

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, slugify } from "@/lib/require-admin";
+import { requirePermission, slugify } from "@/lib/require-admin";
 import { notifyOrderStatusChanged } from "@/lib/notifications";
 import { logAudit } from "@/lib/audit";
 
@@ -49,7 +49,7 @@ function parseProductForm(formData: FormData) {
 }
 
 export async function createProduct(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("products.manage");
   const parsed = parseProductForm(formData);
 
   let slug = slugify(parsed.name);
@@ -104,7 +104,7 @@ export async function createProduct(formData: FormData) {
 }
 
 export async function updateProduct(productId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("products.manage");
   const parsed = parseProductForm(formData);
 
   const before = await prisma.product.findUniqueOrThrow({ where: { id: productId } });
@@ -159,7 +159,7 @@ export async function updateProduct(productId: string, formData: FormData) {
 }
 
 export async function deleteProduct(productId: string) {
-  const session = await requireAdmin();
+  const session = await requirePermission("products.manage");
   const before = await prisma.product.findUniqueOrThrow({ where: { id: productId } });
   await prisma.product.delete({ where: { id: productId } });
 
@@ -178,7 +178,7 @@ export async function deleteProduct(productId: string) {
 const statuses = ["pending", "processing", "shipped", "delivered", "cancelled"] as const;
 
 export async function updateOrderStatus(orderId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("products.manage");
   const status = z.enum(statuses).parse(formData.get("status"));
   const note = (formData.get("note") as string | null)?.trim() || undefined;
   const actorEmail = session.user.email ?? "unknown";

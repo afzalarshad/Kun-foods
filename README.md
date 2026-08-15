@@ -120,10 +120,16 @@ src/store/cart.ts               Zustand cart store
   name/phone/email/order number and opens a quick-view popup (lifetime
   value, open orders, notes, WhatsApp/new-order shortcuts) — built for the
   "customer calls in" workflow.
-- **Roles & staff accounts** (`/admin/users`, admin-only): create logins for
-  staff with three roles — **Admin** (full access), **Staff** (everything
-  except user management/audit log), **POS** (confined to the POS screen
-  only, enforced in `src/proxy.ts`, not just hidden in the UI).
+- **Roles & granular permissions** (`/admin/users`, admin-only): 13 roles —
+  Admin, Manager, Sales, Customer Support, Warehouse Manager, Picker,
+  Packer, Inventory Manager, Accountant, Marketing Manager, POS Operator,
+  and Read Only (plus the original Staff/POS kept for backward
+  compatibility) — each mapped to a specific permission set in
+  `src/lib/permissions.ts`. Enforcement is server-side in `src/proxy.ts`
+  (route-level, redirects a direct URL visit a role can't use) and in every
+  server action/API route via `requirePermission()`/`requireAnyPermission()`
+  — never just hidden in the sidebar. Picker/Packer/POS Operator are
+  confined to a single section the same way the original POS role was.
 - **Audit log** (`/admin/audit-log`, admin-only): every product, order,
   coupon, bundle, shipping-zone, and user change is recorded with who did
   it and when.

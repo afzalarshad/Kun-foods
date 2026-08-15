@@ -3,31 +3,37 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { hasPermission, ROLE_LABELS, type Permission } from "@/lib/permissions";
 
-type NavLink = { href: string; label: string; icon: string; exact?: boolean; roles?: string[] };
+type NavLink = { href: string; label: string; icon: string; exact?: boolean; permission?: Permission };
 
 const links: NavLink[] = [
-  { href: "/admin", label: "Dashboard", icon: "📊", exact: true, roles: ["admin", "staff"] },
-  { href: "/admin/reports", label: "Reports", icon: "📈", roles: ["admin", "staff"] },
-  { href: "/admin/pos", label: "POS", icon: "🧾" },
-  { href: "/admin/products", label: "Products", icon: "🌶️", roles: ["admin", "staff"] },
-  { href: "/admin/inventory", label: "Inventory", icon: "📋", roles: ["admin", "staff"] },
-  { href: "/admin/warehouse", label: "Warehouse", icon: "📲", roles: ["admin", "staff"] },
-  { href: "/admin/bundles", label: "Bundles", icon: "🎁", roles: ["admin", "staff"] },
-  { href: "/admin/coupons", label: "Coupons", icon: "🏷️", roles: ["admin", "staff"] },
-  { href: "/admin/orders", label: "Orders", icon: "📦", roles: ["admin", "staff"] },
-  { href: "/admin/customers", label: "Customers", icon: "👥", roles: ["admin", "staff"] },
-  { href: "/admin/tickets", label: "Support", icon: "🎫", roles: ["admin", "staff"] },
-  { href: "/admin/shipping", label: "Shipping zones", icon: "🚚", roles: ["admin", "staff"] },
-  { href: "/admin/shipments", label: "Shipments", icon: "📮", roles: ["admin", "staff"] },
-  { href: "/admin/import-export", label: "Import/Export", icon: "🗂️", roles: ["admin"] },
-  { href: "/admin/users", label: "Users", icon: "🔑", roles: ["admin"] },
-  { href: "/admin/audit-log", label: "Audit Log", icon: "🕵️", roles: ["admin"] },
+  { href: "/admin", label: "Dashboard", icon: "📊", exact: true },
+  { href: "/admin/reports", label: "Reports", icon: "📈", permission: "reports.view" },
+  { href: "/admin/pos", label: "POS", icon: "🧾", permission: "pos.operate" },
+  { href: "/admin/products", label: "Products", icon: "🌶️", permission: "products.view" },
+  { href: "/admin/inventory", label: "Inventory", icon: "📋", permission: "inventory.view" },
+  { href: "/admin/warehouse", label: "Warehouse", icon: "📲", permission: "warehouse.pick" },
+  { href: "/admin/bundles", label: "Bundles", icon: "🎁", permission: "promotions.manage" },
+  { href: "/admin/coupons", label: "Coupons", icon: "🏷️", permission: "promotions.manage" },
+  { href: "/admin/orders", label: "Orders", icon: "📦", permission: "orders.view" },
+  { href: "/admin/customers", label: "Customers", icon: "👥", permission: "customers.view" },
+  { href: "/admin/tickets", label: "Support", icon: "🎫", permission: "support.manage" },
+  { href: "/admin/shipping", label: "Shipping zones", icon: "🚚", permission: "shipping.manage" },
+  { href: "/admin/shipments", label: "Shipments", icon: "📮", permission: "shipping.manage" },
+  { href: "/admin/import-export", label: "Import/Export", icon: "🗂️", permission: "import_export.manage" },
+  { href: "/admin/users", label: "Users", icon: "🔑", permission: "users.manage" },
+  { href: "/admin/audit-log", label: "Audit Log", icon: "🕵️", permission: "audit.view" },
 ];
 
 export function AdminSidebar({ userEmail, role }: { userEmail: string; role: string }) {
   const pathname = usePathname();
-  const visibleLinks = links.filter((link) => !link.roles || link.roles.includes(role));
+  const visibleLinks = links.filter(
+    (link) =>
+      !link.permission ||
+      hasPermission(role, link.permission) ||
+      (link.href === "/admin/warehouse" && hasPermission(role, "warehouse.pack"))
+  );
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-ink/10 bg-cream p-6">
@@ -64,7 +70,7 @@ export function AdminSidebar({ userEmail, role }: { userEmail: string; role: str
         <div className="truncate text-xs text-ink-soft">
           {userEmail}
           <span className="ml-1.5 rounded-full bg-cream-dark px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink">
-            {role}
+            {ROLE_LABELS[role] ?? role}
           </span>
         </div>
         <Link href="/" className="text-sm font-medium text-ink-soft hover:text-chili">

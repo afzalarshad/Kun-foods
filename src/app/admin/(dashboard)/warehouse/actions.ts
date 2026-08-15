@@ -3,14 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/require-admin";
+import { requireAnyPermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 import { notifyOrderStatusChanged } from "@/lib/notifications";
 
 type ScanResult = { error?: string; matchedItemName?: string; pickedQuantity?: number; quantity?: number };
 
 export async function scanPickItem(orderId: string, formData: FormData): Promise<ScanResult> {
-  await requireRole(["admin", "staff"]);
+  await requireAnyPermission(["warehouse.pick", "warehouse.pack"]);
   const code = z.string().min(1).parse(formData.get("code")).trim();
 
   const order = await prisma.order.findUnique({
@@ -38,7 +38,7 @@ export async function scanPickItem(orderId: string, formData: FormData): Promise
 }
 
 export async function adjustPickedQuantity(orderId: string, itemId: string, formData: FormData) {
-  await requireRole(["admin", "staff"]);
+  await requireAnyPermission(["warehouse.pick", "warehouse.pack"]);
   const delta = z.enum(["1", "-1"]).parse(formData.get("delta"));
 
   const item = await prisma.orderItem.findUniqueOrThrow({ where: { id: itemId } });
@@ -50,7 +50,7 @@ export async function adjustPickedQuantity(orderId: string, itemId: string, form
 }
 
 export async function markOrderPacked(orderId: string): Promise<{ error?: string }> {
-  const session = await requireRole(["admin", "staff"]);
+  const session = await requireAnyPermission(["warehouse.pick", "warehouse.pack"]);
   const actorEmail = session.user.email ?? "unknown";
 
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { items: true } });

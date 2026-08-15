@@ -5,10 +5,11 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
+import { ROLE_PERMISSIONS } from "@/lib/permissions";
 
-const roleEnum = z.enum(["admin", "staff", "pos"]);
+const roleEnum = z.enum(Object.keys(ROLE_PERMISSIONS) as [string, ...string[]]);
 
 const createUserSchema = z.object({
   name: z.string().min(2).max(100),
@@ -18,7 +19,7 @@ const createUserSchema = z.object({
 });
 
 export async function createUser(formData: FormData) {
-  const session = await requireRole(["admin"]);
+  const session = await requirePermission("users.manage");
   const parsed = createUserSchema.parse({
     name: formData.get("name"),
     email: formData.get("email"),
@@ -51,7 +52,7 @@ const updateUserSchema = z.object({
 });
 
 export async function updateUser(userId: string, formData: FormData) {
-  const session = await requireRole(["admin"]);
+  const session = await requirePermission("users.manage");
   const parsed = updateUserSchema.parse({
     name: formData.get("name"),
     role: formData.get("role"),
@@ -85,7 +86,7 @@ export async function updateUser(userId: string, formData: FormData) {
 }
 
 export async function deleteUser(userId: string) {
-  const session = await requireRole(["admin"]);
+  const session = await requirePermission("users.manage");
 
   if (session.user.email && (await prisma.adminUser.findUnique({ where: { id: userId } }))?.email === session.user.email) {
     throw new Error("You can't delete your own account");

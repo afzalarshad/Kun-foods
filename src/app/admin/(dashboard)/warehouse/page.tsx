@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/require-admin";
+import { requireAnyPermission } from "@/lib/require-admin";
 import { WarehousePickList } from "@/components/admin/warehouse-pick-list";
 
 export default async function WarehousePage() {
-  await requireRole(["admin", "staff"]);
+  await requireAnyPermission(["warehouse.pick", "warehouse.pack"]);
 
   const orders = await prisma.order.findMany({
     where: { status: "processing" },
