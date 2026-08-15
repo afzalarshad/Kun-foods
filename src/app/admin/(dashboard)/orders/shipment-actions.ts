@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
+import { getCourierAdapter } from "@/lib/providers/couriers";
 
 const couriers = ["leopards", "tcs", "postex", "manual"] as const;
 const shipmentStatuses = ["pending", "booked", "picked_up", "in_transit", "delivered", "returned"] as const;
@@ -28,9 +29,33 @@ export async function saveShipment(orderId: string, formData: FormData) {
 
   const existing = await prisma.shipment.findUnique({ where: { orderId } });
 
+  let trackingNumber = parsed.trackingNumber || null;
+  const adapter = getCourierAdapter(parsed.courier);
+
+  // If staff didn't type a tracking number and this courier's API is actually configured,
+  // try booking through it directly instead of requiring manual entry. None of the couriers
+  // ship with real credentials today, so this is a no-op until LEOPARDS_API_KEY etc. is set.
+  if (!trackingNumber && adapter.configured) {
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+    try {
+      const booking = await adapter.createBooking({
+        orderNumber: order.orderNumber,
+        customerName: order.customerName,
+        phone: order.phone,
+        address: order.address,
+        city: order.city,
+        codAmount: parsed.codAmount !== undefined ? Math.round(parsed.codAmount * 100) : null,
+        weightGrams: parsed.weightGrams ?? null,
+      });
+      trackingNumber = booking.trackingNumber;
+    } catch (err) {
+      console.error(`[saveShipment] ${adapter.label} auto-booking failed:`, err);
+    }
+  }
+
   const data = {
     courier: parsed.courier,
-    trackingNumber: parsed.trackingNumber || null,
+    trackingNumber,
     weightGrams: parsed.weightGrams ?? null,
     codAmount: parsed.codAmount !== undefined ? Math.round(parsed.codAmount * 100) : null,
     actorEmail,

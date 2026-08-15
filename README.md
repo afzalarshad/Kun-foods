@@ -215,13 +215,47 @@ src/store/cart.ts               Zustand cart store
   (used on shipping labels), and platform-wide toggles for email/SMS
   notifications that genuinely gate sending (not just a UI checkbox) —
   plus a read-only integration status panel showing which provider env
-  vars (Resend, Twilio, WhatsApp) are configured.
+  vars (Resend, Twilio, WhatsApp) are configured, and admin-editable SLA
+  hour thresholds (see below).
+- **SLA tracking & operations dashboard** (`/admin/operations`): live SLA
+  compliance for support tickets (first response + resolution deadlines,
+  by priority) and order fulfillment (time to ship, by priority), with
+  configurable hour thresholds per priority in Settings. Deadlines are
+  computed on the fly — `on track` / `at risk` (last 20% of the window) /
+  `breached` — and shown as badges on the tickets and orders lists and
+  detail pages. The dashboard surfaces breach/at-risk counts, rolling
+  30-day averages (first response time, resolution time, time to ship),
+  and "needs attention" lists linking straight to the overdue ticket or
+  order.
 - **Pagination, search & bulk actions**: Products, Orders, Customers, and
   Tickets lists are all searchable and paginated (50/page), each with
   multi-select bulk actions — activate/deactivate products, assign or
   bulk-status orders, tag customers, and assign/resolve tickets in one
   click. Products also have an `active` flag: deactivating a product hides
   it from the storefront and POS without deleting its order history.
+- **Platform hardening**:
+  - **Safer deletes**: deleting a Product, Bundle, or Coupon that's
+    actually been used on a past order automatically deactivates it
+    instead of hard-deleting — a real delete there would either wipe the
+    product's inventory movement audit trail or silently null out the
+    coupon/product reference on historical orders. Genuinely unused
+    records still delete for real. The admin sees exactly which happened.
+  - **Webhooks** (`/admin/webhooks`, admin-only): register an endpoint URL
+    and subscribe it to `order.created`, `order.status_changed`, and/or
+    `ticket.created`. Each delivery is a signed POST
+    (`X-Kun-Signature: sha256=…`, an HMAC-SHA256 of the raw body using a
+    per-webhook secret shown on its edit page, with one-click rotation) so
+    a receiver can verify it really came from Kun Foods. The list shows
+    each webhook's last delivery status and timestamp.
+  - **Courier provider adapters** (`src/lib/providers/couriers.ts`): a
+    shared `CourierAdapter` interface for Leopards/TCS/PostEx/manual,
+    replacing three separate copies of the courier name list. Every
+    courier now has a real public tracking-page URL ("Track shipment ↗"
+    on the order's shipment panel), and booking already calls through the
+    adapter — so wiring up a real courier API later is a matter of filling
+    in one adapter's `createBooking`, not a rewrite. None are configured
+    with real credentials yet, so tracking numbers are still entered by
+    hand, exactly as before.
 - **Warehouse pick & pack** (`/admin/warehouse`): confirmed orders enter a
   pick queue sorted by priority. Each order has a scan screen — type or
   scan a barcode/SKU (works with any USB/Bluetooth scanner acting as a
@@ -255,6 +289,7 @@ Variables (production), then redeploy/restart:
 | `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | From [twilio.com](https://www.twilio.com). Enables order confirmation + status-update SMS. |
 | `TWILIO_PHONE_NUMBER` | Your Twilio sending number, e.g. `+15551234567`. |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | Your WhatsApp business number in international format with no `+` or spaces, e.g. `923001234567`. Enables the WhatsApp order button; hidden if unset. |
+| `LEOPARDS_API_KEY` / `TCS_API_KEY` / `POSTEX_API_KEY` | Not yet integrated against a real API — presence just flips that courier's adapter to "configured" (see Platform hardening above). Booking still requires a manual tracking number until each adapter's `createBooking` is implemented. |
 
 ## Production notes
 

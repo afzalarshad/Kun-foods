@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { bulkSetTicketStatus, bulkAssignTickets } from "@/app/admin/(dashboard)/tickets/bulk-actions";
+import { SLA_STATE_STYLES, SLA_STATE_LABELS, type SlaState } from "@/lib/sla";
 
 type TicketRow = {
   id: string;
@@ -14,6 +15,7 @@ type TicketRow = {
   customerName: string | null;
   orderNumber: string | null;
   updatedAt: Date;
+  sla: { responseState: SlaState; resolutionState: SlaState } | null;
 };
 
 const statusStyles: Record<string, string> = {
@@ -84,13 +86,14 @@ export function TicketsTable({ tickets }: { tickets: TicketRow[] }) {
               <th className="px-6 py-3 font-medium">Category</th>
               <th className="px-6 py-3 font-medium">Priority</th>
               <th className="px-6 py-3 font-medium">Status</th>
+              <th className="px-6 py-3 font-medium">SLA</th>
               <th className="px-6 py-3 font-medium">Updated</th>
             </tr>
           </thead>
           <tbody>
             {tickets.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-ink-soft">
+                <td colSpan={8} className="px-6 py-8 text-center text-ink-soft">
                   Nothing here — nice and quiet.
                 </td>
               </tr>
@@ -119,6 +122,23 @@ export function TicketsTable({ tickets }: { tickets: TicketRow[] }) {
                   <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${statusStyles[t.status] ?? "bg-cream-dark"}`}>
                     {t.status.replace("_", " ")}
                   </span>
+                </td>
+                <td className="px-6 py-3">
+                  {t.sla && (t.sla.responseState === "breached" || t.sla.resolutionState === "breached") ? (
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${SLA_STATE_STYLES.breached}`}>
+                      {SLA_STATE_LABELS.breached}
+                    </span>
+                  ) : t.sla && (t.sla.responseState === "at_risk" || t.sla.resolutionState === "at_risk") ? (
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${SLA_STATE_STYLES.at_risk}`}>
+                      {SLA_STATE_LABELS.at_risk}
+                    </span>
+                  ) : t.sla ? (
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${SLA_STATE_STYLES.on_track}`}>
+                      {SLA_STATE_LABELS.on_track}
+                    </span>
+                  ) : (
+                    <span className="text-ink-soft">—</span>
+                  )}
                 </td>
                 <td className="px-6 py-3 whitespace-nowrap text-ink-soft">
                   {new Date(t.updatedAt).toLocaleDateString("en-PK", { day: "numeric", month: "short" })}

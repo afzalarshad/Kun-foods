@@ -3,18 +3,26 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { TicketMetaForm } from "@/components/admin/ticket-meta-form";
 import { TicketThread } from "@/components/admin/ticket-thread";
+import { getSlaThresholds, ticketSlaSummary, formatDueLabel, SLA_STATE_STYLES, SLA_STATE_LABELS } from "@/lib/sla";
+
+const OPEN_STATUSES = new Set(["open", "pending", "in_progress", "waiting_on_customer"]);
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const ticket = await prisma.supportTicket.findUnique({
-    where: { id },
-    include: {
-      customer: true,
-      order: { select: { id: true, orderNumber: true } },
-      messages: { orderBy: { createdAt: "asc" } },
-    },
-  });
+  const [ticket, thresholds] = await Promise.all([
+    prisma.supportTicket.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+        order: { select: { id: true, orderNumber: true } },
+        messages: { orderBy: { createdAt: "asc" } },
+      },
+    }),
+    getSlaThresholds(),
+  ]);
   if (!ticket) notFound();
+  const isOpen = OPEN_STATUSES.has(ticket.status);
+  const sla = ticketSlaSummary(ticket, thresholds);
 
   return (
     <div className="max-w-3xl">
@@ -62,6 +70,25 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           <p className="mt-1 text-sm text-ink-soft">
             Opened {new Date(ticket.createdAt).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" })}
           </p>
+          {isOpen ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${SLA_STATE_STYLES[sla.responseState]}`}>
+                Response: {formatDueLabel(sla.responseDueAt, sla.responseState)}
+              </span>
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${SLA_STATE_STYLES[sla.resolutionState]}`}>
+                Resolution: {formatDueLabel(sla.resolutionDueAt, sla.resolutionState)}
+              </span>
+            </div>
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${SLA_STATE_STYLES[sla.responseState]}`}>
+                Response {SLA_STATE_LABELS[sla.responseState]}
+              </span>
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${SLA_STATE_STYLES[sla.resolutionState]}`}>
+                Resolution {SLA_STATE_LABELS[sla.resolutionState]}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, slugify } from "@/lib/require-admin";
 import { notifyOrderStatusChanged } from "@/lib/notifications";
 import { logAudit } from "@/lib/audit";
+import { dispatchWebhookEvent } from "@/lib/webhooks";
 
 const productSchema = z.object({
   name: z.string().min(2).max(150),
@@ -160,11 +161,38 @@ export async function updateProduct(productId: string, formData: FormData) {
 
 export async function deleteProduct(productId: string) {
   const session = await requirePermission("products.manage");
+  const actorEmail = session.user.email ?? "unknown";
   const before = await prisma.product.findUniqueOrThrow({ where: { id: productId } });
+
+  // Deleting a product with order/inventory history would cascade-delete its InventoryMovement
+  // log and null out OrderItem.productId on past orders. Deactivate instead so history stays intact.
+  const [orderItemCount, movementCount, bundleItemCount] = await Promise.all([
+    prisma.orderItem.count({ where: { productId } }),
+    prisma.inventoryMovement.count({ where: { productId } }),
+    prisma.bundleItem.count({ where: { productId } }),
+  ]);
+  const isReferenced = orderItemCount > 0 || movementCount > 0 || bundleItemCount > 0;
+
+  if (isReferenced) {
+    await prisma.product.update({ where: { id: productId }, data: { active: false } });
+    await logAudit({
+      actorEmail,
+      action: "product.deactivate",
+      entityType: "Product",
+      entityId: productId,
+      before: { name: before.name, sku: before.sku },
+    });
+    revalidatePath("/admin/products");
+    revalidatePath("/");
+    return {
+      message: `"${before.name}" has order or inventory history, so it was deactivated (hidden from the storefront) instead of deleted, to keep that history intact.`,
+    };
+  }
+
   await prisma.product.delete({ where: { id: productId } });
 
   await logAudit({
-    actorEmail: session.user.email ?? "unknown",
+    actorEmail,
     action: "product.delete",
     entityType: "Product",
     entityId: productId,
@@ -213,4 +241,10 @@ export async function updateOrderStatus(orderId: string, formData: FormData) {
   notifyOrderStatusChanged(order).catch((err) =>
     console.error("[updateOrderStatus] notification failed:", err)
   );
+  dispatchWebhookEvent("order.status_changed", {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    status: order.status,
+    previousStatus: before.status,
+  }).catch((err) => console.error("[updateOrderStatus] webhook dispatch failed:", err));
 }

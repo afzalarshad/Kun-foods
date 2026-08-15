@@ -115,11 +115,34 @@ export async function updateBundle(bundleId: string, formData: FormData) {
 
 export async function deleteBundle(bundleId: string) {
   const session = await requirePermission("promotions.manage");
+  const actorEmail = session.user.email ?? "unknown";
   const before = await prisma.bundle.findUniqueOrThrow({ where: { id: bundleId } });
+
+  // Deleting a bundle that appears in past orders would null out OrderItem.bundleId.
+  // Deactivate instead so order history keeps pointing at a real bundle record.
+  const orderItemCount = await prisma.orderItem.count({ where: { bundleId } });
+
+  if (orderItemCount > 0) {
+    await prisma.bundle.update({ where: { id: bundleId }, data: { active: false } });
+    await logAudit({
+      actorEmail,
+      action: "bundle.deactivate",
+      entityType: "Bundle",
+      entityId: bundleId,
+      before: { name: before.name },
+    });
+    revalidatePath("/admin/bundles");
+    revalidatePath("/deals");
+    revalidatePath("/");
+    return {
+      message: `"${before.name}" has been ordered before, so it was deactivated (hidden from /deals) instead of deleted, to keep that order history intact.`,
+    };
+  }
+
   await prisma.bundle.delete({ where: { id: bundleId } });
 
   await logAudit({
-    actorEmail: session.user.email ?? "unknown",
+    actorEmail,
     action: "bundle.delete",
     entityType: "Bundle",
     entityId: bundleId,

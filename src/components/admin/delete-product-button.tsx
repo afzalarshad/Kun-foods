@@ -17,7 +17,10 @@ export function DeleteProductButton({
       disabled={isPending}
       onClick={() => {
         if (confirm(`Delete "${productName}"? This cannot be undone.`)) {
-          startTransition(() => deleteProduct(productId));
+          startTransition(async () => {
+            const result = await deleteProduct(productId);
+            if (result?.message) alert(result.message);
+          });
         }
       }}
       className="font-medium text-chili hover:underline disabled:opacity-50"

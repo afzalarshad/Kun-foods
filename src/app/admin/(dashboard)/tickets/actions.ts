@@ -8,6 +8,7 @@ import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 import { generateTicketNumber } from "@/lib/format";
 import { createAdminNotification } from "@/lib/admin-notifications";
+import { dispatchWebhookEvent } from "@/lib/webhooks";
 
 const categories = ["order", "payment", "delivery", "return", "refund", "product", "complaint", "general"] as const;
 const priorities = ["low", "normal", "high", "urgent"] as const;
@@ -73,6 +74,14 @@ export async function createTicket(formData: FormData) {
     link: `/admin/tickets/${ticket.id}`,
   });
 
+  dispatchWebhookEvent("ticket.created", {
+    id: ticket.id,
+    ticketNumber: ticket.ticketNumber,
+    subject: ticket.subject,
+    category: ticket.category,
+    priority: ticket.priority,
+  }).catch((err) => console.error("[createTicket] webhook dispatch failed:", err));
+
   revalidatePath("/admin/tickets");
   redirect(`/admin/tickets/${ticket.id}`);
 }
@@ -87,6 +96,15 @@ export async function addTicketMessage(ticketId: string, formData: FormData) {
     data: { ticketId, authorEmail: actorEmail, authorType: "staff", message, internal },
   });
 
+  // The first follow-up reply after a ticket is opened counts as the SLA "first response"
+  // (the initial ticket-creation message is the complaint being logged, not a reply to it).
+  if (!internal) {
+    const ticket = await prisma.supportTicket.findUnique({ where: { id: ticketId }, select: { firstResponseAt: true } });
+    if (ticket && !ticket.firstResponseAt) {
+      await prisma.supportTicket.update({ where: { id: ticketId }, data: { firstResponseAt: new Date() } });
+    }
+  }
+
   revalidatePath(`/admin/tickets/${ticketId}`);
   revalidatePath("/admin/tickets");
 }
@@ -100,7 +118,12 @@ export async function updateTicketMeta(ticketId: string, formData: FormData) {
 
   const before = await prisma.supportTicket.findUniqueOrThrow({ where: { id: ticketId } });
 
-  await prisma.supportTicket.update({ where: { id: ticketId }, data: { status, priority, assignedTo } });
+  const resolvedStatuses = new Set(["resolved", "closed"]);
+  const nowResolved = resolvedStatuses.has(status);
+  const wasResolved = resolvedStatuses.has(before.status);
+  const resolvedAt = nowResolved && !wasResolved ? new Date() : !nowResolved && wasResolved ? null : before.resolvedAt;
+
+  await prisma.supportTicket.update({ where: { id: ticketId }, data: { status, priority, assignedTo, resolvedAt } });
 
   if (status !== before.status) {
     await prisma.ticketMessage.create({

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 import { TicketsTable } from "@/components/admin/tickets-table";
+import { getSlaThresholds, ticketSlaSummary } from "@/lib/sla";
 
 const statuses = ["open", "pending", "in_progress", "waiting_on_customer", "resolved", "closed"] as const;
 const PAGE_SIZE = 50;
@@ -18,7 +19,7 @@ export default async function TicketsPage({
   const openStatuses = ["open", "pending", "in_progress", "waiting_on_customer"];
   const where = status ? { status } : { status: { in: openStatuses } };
 
-  const [tickets, total] = await Promise.all([
+  const [tickets, total, thresholds] = await Promise.all([
     prisma.supportTicket.findMany({
       where,
       include: { customer: true, order: { select: { orderNumber: true } } },
@@ -27,8 +28,10 @@ export default async function TicketsPage({
       take: PAGE_SIZE,
     }),
     prisma.supportTicket.count({ where }),
+    getSlaThresholds(),
   ]);
 
+  const openStatusSet = new Set(openStatuses);
   const rows = tickets.map((t) => ({
     id: t.id,
     ticketNumber: t.ticketNumber,
@@ -39,6 +42,7 @@ export default async function TicketsPage({
     customerName: t.customer?.name ?? null,
     orderNumber: t.order?.orderNumber ?? null,
     updatedAt: t.updatedAt,
+    sla: openStatusSet.has(t.status) ? ticketSlaSummary(t, thresholds) : null,
   }));
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));

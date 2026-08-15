@@ -90,11 +90,32 @@ export async function updateCoupon(couponId: string, formData: FormData) {
 
 export async function deleteCoupon(couponId: string) {
   const session = await requirePermission("promotions.manage");
+  const actorEmail = session.user.email ?? "unknown";
   const before = await prisma.coupon.findUniqueOrThrow({ where: { id: couponId } });
+
+  // Deleting a coupon that's been used would null out Order.couponId (ON DELETE SET NULL),
+  // silently erasing which coupon was applied on past orders. Deactivate instead.
+  const orderCount = await prisma.order.count({ where: { couponId } });
+
+  if (orderCount > 0) {
+    await prisma.coupon.update({ where: { id: couponId }, data: { active: false } });
+    await logAudit({
+      actorEmail,
+      action: "coupon.deactivate",
+      entityType: "Coupon",
+      entityId: couponId,
+      before: { code: before.code },
+    });
+    revalidatePath("/admin/coupons");
+    return {
+      message: `Coupon "${before.code}" has been used on ${orderCount} order(s), so it was deactivated instead of deleted, to keep that order history intact.`,
+    };
+  }
+
   await prisma.coupon.delete({ where: { id: couponId } });
 
   await logAudit({
-    actorEmail: session.user.email ?? "unknown",
+    actorEmail,
     action: "coupon.delete",
     entityType: "Coupon",
     entityId: couponId,

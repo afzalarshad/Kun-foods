@@ -4,6 +4,7 @@ import { getShippingRate } from "@/lib/shipping";
 import { notifyOrderCreated } from "@/lib/notifications";
 import { notifyLowStockIfNeeded } from "@/lib/admin-notifications";
 import { computePromotionsForCart } from "@/lib/promotions";
+import { dispatchWebhookEvent } from "@/lib/webhooks";
 
 export type CreateOrderInput = {
   customerName: string;
@@ -216,6 +217,15 @@ export async function createOrder(input: CreateOrderInput) {
   });
 
   notifyOrderCreated(order).catch((err) => console.error("[create-order] notification failed:", err));
+  dispatchWebhookEvent("order.created", {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    customerName: order.customerName,
+    email: order.email,
+    total: order.total,
+    status: order.status,
+    source: order.source,
+  }).catch((err) => console.error("[create-order] webhook dispatch failed:", err));
   for (const p of stockUpdates) {
     if (p.reorderLevel !== null) {
       notifyLowStockIfNeeded(p.id, p.name, p.stock, p.reorderLevel).catch((err) =>

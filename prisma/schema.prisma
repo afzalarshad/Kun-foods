@@ -278,6 +278,8 @@ model SupportTicket {
   priority     String          @default("normal") // low | normal | high | urgent
   status       String          @default("open") // open | pending | in_progress | waiting_on_customer | resolved | closed
   assignedTo   String?
+  firstResponseAt DateTime? // set when the first follow-up staff message lands (SLA response tracking)
+  resolvedAt      DateTime? // set when status moves to resolved/closed; cleared if reopened
   messages     TicketMessage[]
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
@@ -349,6 +351,19 @@ model AdminNotification {
   link      String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model Webhook {
+  id              String    @id @default(cuid())
+  name            String
+  url             String
+  secret          String // HMAC-signs the payload (X-Kun-Signature header) so receivers can verify authenticity
+  events          String // JSON-encoded array of subscribed event names, e.g. ["order.created"]
+  active          Boolean   @default(true)
+  lastStatus      String? // e.g. "200" or "error: timeout"
+  lastTriggeredAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model HeldSale {

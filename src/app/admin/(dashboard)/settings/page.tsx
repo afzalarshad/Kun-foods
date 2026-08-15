@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/require-admin";
-import { getSettings, SETTING_KEYS } from "@/lib/settings";
-import { updateSettings } from "@/app/admin/(dashboard)/settings/actions";
+import { getSettings, SETTING_KEYS, SLA_SETTING_KEYS } from "@/lib/settings";
+import { updateSettings, updateSlaThresholds } from "@/app/admin/(dashboard)/settings/actions";
+
+const slaPriorities = ["urgent", "high", "normal", "low"] as const;
+const slaMetrics = [
+  { key: "ticketResponseHours" as const, label: "Ticket first response (hrs)" },
+  { key: "ticketResolutionHours" as const, label: "Ticket resolution (hrs)" },
+  { key: "orderFulfillmentHours" as const, label: "Order fulfillment (hrs)" },
+];
 
 function statusRow(label: string, configured: boolean, hint: string) {
   return (
@@ -85,6 +92,56 @@ export default async function SettingsPage() {
           className="mt-6 rounded-full bg-chili px-7 py-3 font-heading font-semibold text-white hover:bg-chili-dark"
         >
           Save settings
+        </button>
+      </form>
+
+      <form action={updateSlaThresholds} className="mt-6 rounded-3xl bg-white p-6 shadow-sm">
+        <h2 className="font-heading font-bold">SLA thresholds</h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          How many hours staff have before a ticket or order counts as overdue. Drives the{" "}
+          <Link href="/admin/operations" className="font-semibold text-chili hover:underline">
+            Operations
+          </Link>{" "}
+          dashboard and the SLA badges on tickets and orders.
+        </p>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="text-ink-soft">
+                <th className="py-2 pr-4 font-medium">Priority</th>
+                {slaMetrics.map((m) => (
+                  <th key={m.key} className="py-2 pr-4 font-medium">
+                    {m.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {slaPriorities.map((priority) => (
+                <tr key={priority} className="border-t border-ink/10">
+                  <td className="py-2 pr-4 font-medium capitalize">{priority}</td>
+                  {slaMetrics.map((m) => (
+                    <td key={m.key} className="py-2 pr-4">
+                      <input
+                        type="number"
+                        min={1}
+                        max={720}
+                        name={`${m.key}.${priority}`}
+                        defaultValue={settings[SLA_SETTING_KEYS[m.key][priority]]}
+                        className="w-20 rounded-xl border border-ink/20 bg-white px-3 py-1.5 focus:border-chili focus:outline-none"
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <button
+          type="submit"
+          className="mt-6 rounded-full bg-chili px-7 py-3 font-heading font-semibold text-white hover:bg-chili-dark"
+        >
+          Save SLA thresholds
         </button>
       </form>
 

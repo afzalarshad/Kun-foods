@@ -7,7 +7,8 @@ export function DeleteButton({
   confirmMessage,
   label = "Delete",
 }: {
-  action: () => Promise<void> | void;
+  /** May return { message } to explain a non-delete outcome (e.g. deactivated instead of removed). */
+  action: () => Promise<{ message?: string } | void> | void;
   confirmMessage: string;
   label?: string;
 }) {
@@ -18,7 +19,10 @@ export function DeleteButton({
       disabled={isPending}
       onClick={() => {
         if (confirm(confirmMessage)) {
-          startTransition(() => action());
+          startTransition(async () => {
+            const result = await action();
+            if (result?.message) alert(result.message);
+          });
         }
       }}
       className="font-medium text-chili hover:underline disabled:opacity-50"
