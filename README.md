@@ -41,8 +41,25 @@ checkout, or admin login). Vercel runs it exactly as built, for free:
    - `AUTH_SECRET` — any long random string (e.g. generate one at
      [generate-secret.vercel.app/32](https://generate-secret.vercel.app/32))
    - `ADMIN_EMAIL` / `ADMIN_PASSWORD` — your admin login
+   - `DIRECT_URL` — a **direct (non-pooled)** connection string to the same
+     database, required for migrations (see note below). Open your database
+     in the [Neon console](https://console.neon.tech), copy the connection
+     string that does **not** have `-pooler` in the hostname, and add it as
+     `DIRECT_URL` in Vercel → Project Settings → Environment Variables (set
+     it for Production, Preview, and Development).
 4. Click **Deploy**. Vercel builds the app and runs `prisma migrate deploy`
    automatically, so the database tables are created on first deploy.
+
+> **Why `DIRECT_URL` matters:** `DATABASE_URL` is Neon's pooled connection
+> (hostname contains `-pooler`), which the app should use for normal
+> queries. But `prisma migrate deploy` needs to hold a session-level
+> Postgres advisory lock while it runs, and connection poolers can't
+> reliably hold that — it fails with `Error: P1002 … Timed out trying to
+> acquire a postgres advisory lock`. Pointing migrations at a direct,
+> unpooled connection via `DIRECT_URL` fixes it. If your Neon integration
+> already added an unpooled URL under a different name (e.g.
+> `DATABASE_URL_UNPOOLED` or `POSTGRES_URL_NON_POOLING`), you can just copy
+> its value into a `DIRECT_URL` variable instead of going back to Neon.
 5. Once it's live, seed sample products from your machine:
    ```bash
    vercel env pull .env        # pulls the live DATABASE_URL locally
