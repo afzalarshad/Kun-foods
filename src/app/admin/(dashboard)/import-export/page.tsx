@@ -1,5 +1,6 @@
 import { requirePermission } from "@/lib/require-admin";
 import { ProductImportForm } from "@/components/admin/product-import-form";
+import { ShippingZoneImportForm } from "@/components/admin/shipping-zone-import-form";
 
 export default async function ImportExportPage() {
   await requirePermission("import_export.manage");
@@ -31,6 +32,12 @@ export default async function ImportExportPage() {
           >
             ⬇ Customers
           </a>
+          <a
+            href="/api/admin/export/shipping-zones"
+            className="rounded-full border-2 border-ink px-5 py-2.5 text-sm font-heading font-semibold hover:bg-ink hover:text-cream"
+          >
+            ⬇ Shipping rates
+          </a>
         </div>
       </div>
 
@@ -54,6 +61,27 @@ export default async function ImportExportPage() {
         </p>
         <div className="mt-4">
           <ProductImportForm />
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-3xl bg-white p-6 shadow-sm">
+        <h2 className="font-heading font-bold">Import shipping rates</h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          Upload a CSV with columns: <code className="rounded bg-cream-dark px-1.5 py-0.5 text-xs">scope</code> (
+          <code className="rounded bg-cream-dark px-1.5 py-0.5 text-xs">city</code> or{" "}
+          <code className="rounded bg-cream-dark px-1.5 py-0.5 text-xs">province</code>) and{" "}
+          <code className="rounded bg-cream-dark px-1.5 py-0.5 text-xs">rate</code> required — plus{" "}
+          <code className="rounded bg-cream-dark px-1.5 py-0.5 text-xs">city</code> or{" "}
+          <code className="rounded bg-cream-dark px-1.5 py-0.5 text-xs">province</code> (matching the row&apos;s scope),{" "}
+          <code className="rounded bg-cream-dark px-1.5 py-0.5 text-xs">freeAbove</code>,{" "}
+          <code className="rounded bg-cream-dark px-1.5 py-0.5 text-xs">excluded</code> (yes/no),{" "}
+          <code className="rounded bg-cream-dark px-1.5 py-0.5 text-xs">active</code> (yes/no). City must match a
+          name from the Pakistan city list and province must be spelled exactly (e.g. &quot;Punjab&quot;, &quot;Khyber
+          Pakhtunkhwa&quot;). A row matching an existing city/province updates that rate; otherwise a new one is
+          created. The shipping rates export above is a ready-made template.
+        </p>
+        <div className="mt-4">
+          <ShippingZoneImportForm />
         </div>
       </div>
     </div>

@@ -1,16 +1,27 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
+import { requireAdmin } from "@/lib/require-admin";
+import { hasPermission } from "@/lib/permissions";
 
 export default async function AdminDashboardPage() {
-  const [orderCount, productCount, revenueAgg, recentOrders, lowStockProducts] = await Promise.all([
+  const session = await requireAdmin();
+  const canViewRevenue = hasPermission(session.user.role ?? "staff", "reports.financial");
+
+  const [orderCount, productCount, revenueAgg, recentOrders, lowStockProducts, packedOrders] = await Promise.all([
     prisma.order.count(),
     prisma.product.count(),
-    prisma.order.aggregate({ _sum: { total: true } }),
+    canViewRevenue ? prisma.order.aggregate({ _sum: { total: true } }) : Promise.resolve(null),
     prisma.order.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
     prisma.product.findMany({
       where: { reorderLevel: { not: null } },
       select: { id: true, name: true, stock: true, reorderLevel: true },
+    }),
+    prisma.order.findMany({
+      where: { status: "packed" },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, orderNumber: true, customerName: true },
+      take: 20,
     }),
   ]);
 
@@ -18,7 +29,7 @@ export default async function AdminDashboardPage() {
 
   const stats = [
     { label: "Total orders", value: orderCount, icon: "📦" },
-    { label: "Total revenue", value: formatPrice(revenueAgg._sum.total ?? 0), icon: "💰" },
+    ...(canViewRevenue ? [{ label: "Total revenue", value: formatPrice(revenueAgg?._sum.total ?? 0), icon: "💰" }] : []),
     { label: "Products", value: productCount, icon: "🌶️" },
     { label: "Low stock alerts", value: lowStockAlerts.length, icon: "⚠️" },
   ];
@@ -37,6 +48,29 @@ export default async function AdminDashboardPage() {
           </div>
         ))}
       </div>
+
+      {packedOrders.length > 0 && (
+        <div className="mt-10 rounded-3xl border-2 border-saffron/40 bg-saffron/5 p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-heading font-bold text-saffron-dark">📦 Packed — awaiting courier booking</h2>
+            <Link href="/admin/orders?status=packed" className="text-sm font-semibold text-chili hover:underline">
+              Book couriers →
+            </Link>
+          </div>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {packedOrders.map((o) => (
+              <li key={o.id}>
+                <Link
+                  href={`/admin/orders/${o.id}`}
+                  className="rounded-full bg-white px-3 py-1.5 text-sm font-medium shadow-sm hover:text-chili"
+                >
+                  #{o.orderNumber} — {o.customerName}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {lowStockAlerts.length > 0 && (
         <div className="mt-10 rounded-3xl border-2 border-chili/30 bg-chili/5 p-6">

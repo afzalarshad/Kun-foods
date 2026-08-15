@@ -4,8 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/format";
 import { getShippingForCity, type ShippingZonePreview } from "@/lib/shipping-preview";
+import { PAKISTAN_PROVINCES, PAKISTAN_CITIES_BY_PROVINCE } from "@/lib/pakistan-locations";
 import { createPosOrder } from "@/app/admin/(dashboard)/pos/actions";
 import { holdSale, resumeSale, discardHeldSale } from "@/app/admin/(dashboard)/pos/held-sales-actions";
+import { isValidPakistaniMobile } from "@/lib/phone";
 
 type Sellable = { id: string; name: string; price: number; image: string; stock?: number; sku?: string | null; barcode?: string | null };
 
@@ -139,7 +141,9 @@ export function PosClient({
   }
 
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const shipping = city.trim() ? getShippingForCity(zones, city, subtotal - couponDiscount - promoDiscount) : 0;
+  const shippingPreview = city.trim() ? getShippingForCity(zones, city, subtotal - couponDiscount - promoDiscount) : { rate: 0, excluded: false };
+  const shipping = shippingPreview.rate;
+  const cityExcluded = shippingPreview.excluded;
   const total = subtotal - couponDiscount - promoDiscount + shipping;
 
   const paymentLinesTotal = paymentLines.reduce((sum, l) => sum + (Number(l.amount) || 0) * 100, 0);
@@ -227,6 +231,14 @@ export function PosClient({
   async function handleSubmit() {
     if (cart.length === 0) {
       setError("Add at least one item");
+      return;
+    }
+    if (!isValidPakistaniMobile(phone)) {
+      setError("Enter a valid Pakistani mobile number, e.g. 0300-1234567");
+      return;
+    }
+    if (cityExcluded) {
+      setError(`We don't currently deliver to ${city}.`);
       return;
     }
     setSubmitting(true);
@@ -384,9 +396,13 @@ export function PosClient({
               className="rounded-xl border border-ink/20 px-4 py-2.5 focus:border-chili focus:outline-none"
             />
             <input
+              type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="Phone number"
+              inputMode="tel"
+              pattern="(\+92|0092|92|0)?3\d{9}"
+              title="Enter a valid Pakistani mobile number, e.g. 03001234567"
+              placeholder="Mobile number (03XXXXXXXXX)"
               className="rounded-xl border border-ink/20 px-4 py-2.5 focus:border-chili focus:outline-none"
             />
             <input
@@ -396,33 +412,35 @@ export function PosClient({
               type="email"
               className="rounded-xl border border-ink/20 px-4 py-2.5 focus:border-chili focus:outline-none"
             />
-            {zones.length > 0 ? (
-              <select
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="rounded-xl border border-ink/20 px-4 py-2.5 focus:border-chili focus:outline-none"
-              >
-                <option value="">Walk-in / Pickup (no shipping)</option>
-                {zones.map((z) => (
-                  <option key={z.city} value={z.city}>
-                    {z.city} delivery
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="City for delivery (leave blank for walk-in)"
-                className="rounded-xl border border-ink/20 px-4 py-2.5 focus:border-chili focus:outline-none"
-              />
-            )}
+            <select
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              className={`rounded-xl border px-4 py-2.5 focus:outline-none ${
+                cityExcluded ? "border-chili" : "border-ink/20 focus:border-chili"
+              }`}
+            >
+              <option value="">Walk-in / Pickup (no shipping)</option>
+              {PAKISTAN_PROVINCES.map((province) => (
+                <optgroup key={province} label={province}>
+                  {PAKISTAN_CITIES_BY_PROVINCE[province].map((c) => (
+                    <option key={c} value={c}>
+                      {c} delivery
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Address (optional for walk-in)"
               className="sm:col-span-2 rounded-xl border border-ink/20 px-4 py-2.5 focus:border-chili focus:outline-none"
             />
+            {cityExcluded && (
+              <p className="sm:col-span-2 text-sm font-medium text-chili-dark">
+                We don&apos;t currently deliver to {city} — pick a different city or leave it as walk-in/pickup.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -516,7 +534,9 @@ export function PosClient({
         )}
         <div className="mt-1 flex justify-between text-sm text-ink-soft">
           <span>Shipping{city ? ` (${city})` : ""}</span>
-          <span>{shipping === 0 ? "Free" : formatPrice(shipping)}</span>
+          <span className={cityExcluded ? "font-medium text-chili-dark" : ""}>
+            {cityExcluded ? "Not deliverable" : shipping === 0 ? "Free" : formatPrice(shipping)}
+          </span>
         </div>
         <div className="mt-3 flex justify-between border-t border-ink/10 pt-3 font-heading text-lg font-bold">
           <span>Total</span>
@@ -610,10 +630,10 @@ export function PosClient({
 
         <button
           onClick={handleSubmit}
-          disabled={submitting || cart.length === 0 || !customerName || !email || !phone}
+          disabled={submitting || cart.length === 0 || !customerName || !email || !phone || cityExcluded}
           className="mt-4 w-full rounded-full bg-chili py-3 font-heading font-semibold text-white hover:bg-chili-dark disabled:opacity-50"
         >
-          {submitting ? "Creating…" : `Create order — ${formatPrice(total)}`}
+          {submitting ? "Creating…" : cityExcluded ? "Not deliverable to this city" : `Create order — ${formatPrice(total)}`}
         </button>
       </div>
     </div>

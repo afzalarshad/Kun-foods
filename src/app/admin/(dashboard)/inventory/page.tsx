@@ -10,6 +10,8 @@ const typeStyles: Record<string, string> = {
   return: "bg-plum/10 text-plum",
   adjustment: "bg-saffron/20 text-saffron-dark",
   restock: "bg-basil/10 text-basil-dark",
+  transfer_out: "bg-cream-dark text-ink-soft",
+  transfer_in: "bg-cream-dark text-ink-soft",
 };
 
 export default async function InventoryPage({
@@ -23,11 +25,12 @@ export default async function InventoryPage({
 
   const where = productFilter ? { productId: productFilter } : {};
 
-  const [products, lowStock, movements, total, filteredProduct] = await Promise.all([
+  const [products, warehouses, lowStock, movements, total, filteredProduct] = await Promise.all([
     prisma.product.findMany({
-      select: { id: true, name: true, sku: true, stock: true },
+      select: { id: true, name: true, sku: true, stock: true, warehouseStock: { select: { warehouseId: true, quantity: true } } },
       orderBy: { name: "asc" },
     }),
+    prisma.warehouse.findMany({ where: { active: true }, orderBy: [{ isDefault: "desc" }, { name: "asc" }] }),
     prisma.product.findMany({
       where: { reorderLevel: { not: null } },
       select: { id: true, name: true, sku: true, stock: true, reorderLevel: true },
@@ -35,7 +38,7 @@ export default async function InventoryPage({
     }),
     prisma.inventoryMovement.findMany({
       where,
-      include: { product: { select: { name: true, sku: true } } },
+      include: { product: { select: { name: true, sku: true } }, warehouse: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
@@ -78,9 +81,39 @@ export default async function InventoryPage({
           returns are logged automatically and don&apos;t need a manual entry here.
         </p>
         <div className="mt-4">
-          <AdjustStockForm products={products} />
+          <AdjustStockForm products={products} warehouses={warehouses} />
         </div>
       </div>
+
+      {warehouses.length >= 2 && (
+        <div className="mt-6 overflow-x-auto rounded-3xl bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-ink/10 text-ink-soft">
+                <th className="px-6 py-3 font-medium">Product</th>
+                {warehouses.map((w) => (
+                  <th key={w.id} className="px-6 py-3 font-medium">{w.name}</th>
+                ))}
+                <th className="px-6 py-3 font-medium">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((p) => {
+                const byWarehouse = new Map(p.warehouseStock.map((s) => [s.warehouseId, s.quantity]));
+                return (
+                  <tr key={p.id} className="border-b border-ink/5 last:border-0">
+                    <td className="px-6 py-3 font-medium">{p.name}</td>
+                    {warehouses.map((w) => (
+                      <td key={w.id} className="px-6 py-3 text-ink-soft">{byWarehouse.get(w.id) ?? 0}</td>
+                    ))}
+                    <td className="px-6 py-3 font-semibold">{p.stock}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="mt-6 flex items-center justify-between">
         <h2 className="font-heading text-lg font-bold">
@@ -99,6 +132,7 @@ export default async function InventoryPage({
             <tr className="border-b border-ink/10 text-ink-soft">
               <th className="px-6 py-3 font-medium">When</th>
               <th className="px-6 py-3 font-medium">Product</th>
+              <th className="px-6 py-3 font-medium">Warehouse</th>
               <th className="px-6 py-3 font-medium">Type</th>
               <th className="px-6 py-3 font-medium">Qty</th>
               <th className="px-6 py-3 font-medium">Reason</th>
@@ -108,7 +142,7 @@ export default async function InventoryPage({
           <tbody>
             {movements.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-ink-soft">
+                <td colSpan={7} className="px-6 py-8 text-center text-ink-soft">
                   No movements recorded yet.
                 </td>
               </tr>
@@ -129,9 +163,10 @@ export default async function InventoryPage({
                   </Link>
                   {m.product.sku && <span className="ml-1 text-xs text-ink-soft">({m.product.sku})</span>}
                 </td>
+                <td className="px-6 py-3 text-ink-soft">{m.warehouse?.name ?? "—"}</td>
                 <td className="px-6 py-3">
                   <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${typeStyles[m.type] ?? "bg-cream-dark"}`}>
-                    {m.type}
+                    {m.type.replace("_", " ")}
                   </span>
                 </td>
                 <td className={`px-6 py-3 font-medium ${m.quantity < 0 ? "text-chili" : "text-basil-dark"}`}>

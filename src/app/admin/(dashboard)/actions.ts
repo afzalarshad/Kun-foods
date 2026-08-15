@@ -8,6 +8,7 @@ import { requirePermission, slugify } from "@/lib/require-admin";
 import { notifyOrderStatusChanged } from "@/lib/notifications";
 import { logAudit } from "@/lib/audit";
 import { dispatchWebhookEvent } from "@/lib/webhooks";
+import { getDefaultWarehouse, incrementWarehouseStock, decrementWarehouseStock } from "@/lib/warehouse-stock";
 
 const productSchema = z.object({
   name: z.string().min(2).max(150),
@@ -79,16 +80,25 @@ export async function createProduct(formData: FormData) {
     },
   });
 
-  if (parsed.stock > 0) {
-    await prisma.inventoryMovement.create({
-      data: {
-        productId: created.id,
-        type: "restock",
-        quantity: parsed.stock,
-        reason: "Initial stock on product creation",
-        actorEmail: session.user.email ?? "unknown",
-      },
+  {
+    // A brand-new product's whole stock lives at the default warehouse until
+    // someone transfers some of it elsewhere.
+    const defaultWarehouse = await getDefaultWarehouse();
+    await prisma.warehouseStock.create({
+      data: { productId: created.id, warehouseId: defaultWarehouse.id, quantity: parsed.stock },
     });
+    if (parsed.stock > 0) {
+      await prisma.inventoryMovement.create({
+        data: {
+          productId: created.id,
+          warehouseId: defaultWarehouse.id,
+          type: "restock",
+          quantity: parsed.stock,
+          reason: "Initial stock on product creation",
+          actorEmail: session.user.email ?? "unknown",
+        },
+      });
+    }
   }
 
   await logAudit({
@@ -107,8 +117,42 @@ export async function createProduct(formData: FormData) {
 export async function updateProduct(productId: string, formData: FormData) {
   const session = await requirePermission("products.manage");
   const parsed = parseProductForm(formData);
+  const actorEmail = session.user.email ?? "unknown";
 
   const before = await prisma.product.findUniqueOrThrow({ where: { id: productId } });
+
+  // The stock field here only ever moves the DEFAULT warehouse's pool — for
+  // any other location, use Inventory → Adjust stock instead. Compare against
+  // that warehouse's current level, not Product.stock (the cross-warehouse total).
+  const defaultWarehouse = await getDefaultWarehouse();
+  const defaultLevel = await prisma.warehouseStock.findUnique({
+    where: { productId_warehouseId: { productId, warehouseId: defaultWarehouse.id } },
+  });
+  const stockDelta = parsed.stock - (defaultLevel?.quantity ?? 0);
+  if (stockDelta !== 0) {
+    if (stockDelta < 0 && (defaultLevel?.quantity ?? 0) + stockDelta < 0) {
+      throw new Error(
+        `That would take the default warehouse's stock below zero (it only holds ${defaultLevel?.quantity ?? 0}) — adjust a specific warehouse from Inventory instead.`
+      );
+    }
+    await prisma.$transaction(async (tx) => {
+      if (stockDelta > 0) {
+        await incrementWarehouseStock(tx, { productId, warehouseId: defaultWarehouse.id, quantity: stockDelta });
+      } else {
+        await decrementWarehouseStock(tx, { productId, warehouseId: defaultWarehouse.id, quantity: -stockDelta });
+      }
+      await tx.inventoryMovement.create({
+        data: {
+          productId,
+          warehouseId: defaultWarehouse.id,
+          type: "adjustment",
+          quantity: stockDelta,
+          reason: "Manual stock edit via product form",
+          actorEmail,
+        },
+      });
+    });
+  }
 
   const updated = await prisma.product.update({
     where: { id: productId },
@@ -125,28 +169,14 @@ export async function updateProduct(productId: string, formData: FormData) {
       images: JSON.stringify([parsed.image]),
       badge: parsed.badge || null,
       weightLabel: parsed.weightLabel || null,
-      stock: parsed.stock,
       featured: parsed.featured ?? false,
       active: parsed.active ?? true,
       categoryId: parsed.categoryId,
     },
   });
 
-  const stockDelta = parsed.stock - before.stock;
-  if (stockDelta !== 0) {
-    await prisma.inventoryMovement.create({
-      data: {
-        productId,
-        type: "adjustment",
-        quantity: stockDelta,
-        reason: "Manual stock edit via product form",
-        actorEmail: session.user.email ?? "unknown",
-      },
-    });
-  }
-
   await logAudit({
-    actorEmail: session.user.email ?? "unknown",
+    actorEmail,
     action: "product.update",
     entityType: "Product",
     entityId: productId,
@@ -203,7 +233,7 @@ export async function deleteProduct(productId: string) {
   revalidatePath("/");
 }
 
-const statuses = ["pending", "processing", "shipped", "delivered", "cancelled"] as const;
+const statuses = ["pending", "processing", "packed", "shipped", "delivered", "cancelled"] as const;
 
 export async function updateOrderStatus(orderId: string, formData: FormData) {
   const session = await requirePermission("products.manage");

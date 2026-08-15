@@ -3,11 +3,12 @@
 import { z } from "zod";
 import { requirePermission } from "@/lib/require-admin";
 import { createOrder, OrderError } from "@/lib/create-order";
+import { pakistaniMobileSchema } from "@/lib/phone";
 
 const posOrderSchema = z.object({
   customerName: z.string().min(2).max(100),
   email: z.string().email(),
-  phone: z.string().min(7).max(20),
+  phone: pakistaniMobileSchema,
   address: z.string().min(2).max(300).optional(),
   city: z.string().min(2).max(100).optional(),
   paymentMethod: z.enum(["cash", "cod", "card"]),
@@ -36,13 +37,16 @@ export type PosOrderInput = z.infer<typeof posOrderSchema>;
 
 export async function createPosOrder(input: PosOrderInput) {
   await requirePermission("pos.operate");
-  const parsed = posOrderSchema.parse(input);
+  const parsed = posOrderSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid order data" };
+  }
 
   try {
     const order = await createOrder({
-      ...parsed,
-      address: parsed.address ?? "",
-      city: parsed.city ?? "",
+      ...parsed.data,
+      address: parsed.data.address ?? "",
+      city: parsed.data.city ?? "",
       source: "pos",
     });
     return { orderId: order.id, orderNumber: order.orderNumber };

@@ -4,7 +4,7 @@ import { requirePermission } from "@/lib/require-admin";
 import { getSlaThresholds, ticketSlaSummary, orderSlaSummary, formatDueLabel, formatDuration, SLA_STATE_STYLES, SLA_STATE_LABELS } from "@/lib/sla";
 
 const OPEN_TICKET_STATUSES = ["open", "pending", "in_progress", "waiting_on_customer"];
-const OPEN_ORDER_STATUSES = ["pending", "processing"];
+const OPEN_ORDER_STATUSES = ["pending", "processing", "packed"];
 const LOOKBACK_DAYS = 30;
 
 export default async function OperationsPage() {

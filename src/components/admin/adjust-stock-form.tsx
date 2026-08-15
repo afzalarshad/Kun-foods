@@ -4,8 +4,9 @@ import { useRef, useState, useTransition } from "react";
 import { adjustStock } from "@/app/admin/(dashboard)/inventory/actions";
 
 type ProductOption = { id: string; name: string; sku: string | null; stock: number };
+type WarehouseOption = { id: string; name: string; isDefault: boolean };
 
-export function AdjustStockForm({ products }: { products: ProductOption[] }) {
+export function AdjustStockForm({ products, warehouses }: { products: ProductOption[]; warehouses: WarehouseOption[] }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -35,7 +36,22 @@ export function AdjustStockForm({ products }: { products: ProductOption[] }) {
         >
           {products.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name} {p.sku ? `(${p.sku})` : ""} — stock {p.stock}
+              {p.name} {p.sku ? `(${p.sku})` : ""} — total stock {p.stock}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-ink-soft">Warehouse</label>
+        <select
+          name="warehouseId"
+          required
+          defaultValue={warehouses.find((w) => w.isDefault)?.id}
+          className="min-w-[160px] rounded-2xl border border-ink/20 bg-white px-4 py-2.5 text-sm focus:border-chili focus:outline-none"
+        >
+          {warehouses.map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.name}
             </option>
           ))}
         </select>

@@ -64,12 +64,12 @@ export async function markOrderPacked(orderId: string): Promise<{ error?: string
 
   const updated = await prisma.order.update({
     where: { id: orderId },
-    data: { status: "shipped" },
+    data: { status: "packed" },
     include: { items: true },
   });
 
   await prisma.orderStatusEvent.create({
-    data: { orderId, status: "shipped", note: "Picked & packed via warehouse app", actorEmail },
+    data: { orderId, status: "packed", note: "Picked & packed via warehouse app — awaiting courier booking", actorEmail },
   });
 
   await logAudit({
@@ -78,7 +78,7 @@ export async function markOrderPacked(orderId: string): Promise<{ error?: string
     entityType: "Order",
     entityId: orderId,
     before: { status: "processing" },
-    after: { status: "shipped", source: "warehouse-pick-pack" },
+    after: { status: "packed", source: "warehouse-pick-pack" },
   });
 
   notifyOrderStatusChanged(updated).catch((err) => console.error("[markOrderPacked] notification failed:", err));
@@ -86,5 +86,7 @@ export async function markOrderPacked(orderId: string): Promise<{ error?: string
   revalidatePath(`/admin/warehouse`);
   revalidatePath(`/admin/warehouse/${orderId}/pick`);
   revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath(`/admin/orders`);
+  revalidatePath(`/admin`);
   return {};
 }

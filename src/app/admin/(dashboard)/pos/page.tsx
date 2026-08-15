@@ -26,7 +26,14 @@ export default async function AdminPosPage() {
             barcode: p.barcode,
           }))}
           bundles={bundles.map((b) => ({ id: b.id, name: b.name, price: b.price, image: b.image }))}
-          zones={zones.map((z) => ({ city: z.city, rate: z.rate, freeAbove: z.freeAbove }))}
+          zones={zones.map((z) => ({
+            scope: z.scope,
+            city: z.city,
+            province: z.province,
+            rate: z.rate,
+            freeAbove: z.freeAbove,
+            excluded: z.excluded,
+          }))}
           heldSales={heldSales.map((h) => ({
             id: h.id,
             label: h.label,

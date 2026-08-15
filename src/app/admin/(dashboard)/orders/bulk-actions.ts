@@ -7,7 +7,7 @@ import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
 
 const idsSchema = z.array(z.string().min(1)).min(1);
-const statuses = ["pending", "processing", "shipped", "delivered", "cancelled"] as const;
+const statuses = ["pending", "processing", "packed", "shipped", "delivered", "cancelled"] as const;
 
 export async function bulkAssignOrders(orderIds: string[], assignedTo: string) {
   const session = await requirePermission("orders.edit");

@@ -248,11 +248,17 @@ export async function seedDatabase(
     });
   }
 
+  const defaultWarehouse = await prisma.warehouse.upsert({
+    where: { code: "MAIN" },
+    update: {},
+    create: { name: "Main Warehouse", code: "MAIN", city: "Karachi", isDefault: true },
+  });
+
   for (const p of products) {
     const category = await prisma.category.findUniqueOrThrow({
       where: { slug: p.category },
     });
-    await prisma.product.upsert({
+    const product = await prisma.product.upsert({
       where: { slug: p.slug },
       update: {
         name: p.name,
@@ -278,14 +284,20 @@ export async function seedDatabase(
         categoryId: category.id,
       },
     });
+    await prisma.warehouseStock.upsert({
+      where: { productId_warehouseId: { productId: product.id, warehouseId: defaultWarehouse.id } },
+      update: {},
+      create: { productId: product.id, warehouseId: defaultWarehouse.id, quantity: product.stock },
+    });
   }
 
   for (const zone of shippingZones) {
-    await prisma.shippingZone.upsert({
-      where: { city: zone.city },
-      update: zone,
-      create: zone,
-    });
+    const existing = await prisma.shippingZone.findFirst({ where: { scope: "city", city: zone.city } });
+    if (existing) {
+      await prisma.shippingZone.update({ where: { id: existing.id }, data: { rate: zone.rate, freeAbove: zone.freeAbove } });
+    } else {
+      await prisma.shippingZone.create({ data: { scope: "city", city: zone.city, rate: zone.rate, freeAbove: zone.freeAbove } });
+    }
   }
 
   const passwordHash = await bcrypt.hash(adminPassword, 10);

@@ -39,10 +39,15 @@ export default async function NewTicketPage({
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium">Phone</label>
+            <label className="mb-1.5 block text-sm font-medium">Mobile number</label>
             <input
               name="customerPhone"
+              type="tel"
               required
+              inputMode="tel"
+              pattern="(\+92|0092|92|0)?3\d{9}"
+              title="Enter a valid Pakistani mobile number, e.g. 03001234567"
+              placeholder="03XXXXXXXXX"
               defaultValue={customerPhone}
               className="w-full rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
             />

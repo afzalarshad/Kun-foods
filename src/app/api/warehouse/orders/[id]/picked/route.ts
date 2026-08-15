@@ -7,7 +7,8 @@ import { notifyOrderStatusChanged } from "@/lib/notifications";
 /**
  * Marks an order as picked & packed, ready for courier handoff.
  * Requires every line item to be fully scanned first (see
- * POST /api/warehouse/orders/[id]/scan). Moves the order to "shipped".
+ * POST /api/warehouse/orders/[id]/scan). Moves the order to "packed" —
+ * it only becomes "shipped" once a real courier tracking number is booked.
  * POST /api/warehouse/orders/[id]/picked
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -30,12 +31,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const order = await prisma.order.update({
     where: { id: orderId },
-    data: { status: "shipped" },
+    data: { status: "packed" },
     include: { items: true },
   });
 
   await prisma.orderStatusEvent.create({
-    data: { orderId, status: "shipped", note: "Picked & packed via warehouse app", actorEmail },
+    data: { orderId, status: "packed", note: "Picked & packed via warehouse app — awaiting courier booking", actorEmail },
   });
 
   await logAudit({
@@ -44,7 +45,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     entityType: "Order",
     entityId: orderId,
     before: { status: before.status },
-    after: { status: "shipped", source: "warehouse-app" },
+    after: { status: "packed", source: "warehouse-app" },
   });
 
   notifyOrderStatusChanged(order).catch((err) => console.error("[warehouse picked] notification failed:", err));

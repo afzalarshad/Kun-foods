@@ -11,7 +11,7 @@ type OrderResult = {
   items: { id: string; name: string; quantity: number; price: number }[];
 };
 
-const statusSteps = ["pending", "processing", "shipped", "delivered"];
+const statusSteps = ["pending", "processing", "packed", "shipped", "delivered"];
 
 export default function TrackOrderPage() {
   const [order, setOrder] = useState<OrderResult | null>(null);

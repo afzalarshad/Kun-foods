@@ -16,8 +16,8 @@ export default async function EditShippingZonePage({
 
   return (
     <div>
-      <h1 className="font-heading text-3xl font-extrabold">Edit city</h1>
-      <p className="mt-1 text-ink-soft">{zone.city}</p>
+      <h1 className="font-heading text-3xl font-extrabold">Edit shipping rate</h1>
+      <p className="mt-1 text-ink-soft">{zone.scope === "province" ? zone.province : zone.city}</p>
       <div className="mt-8">
         <ShippingZoneForm action={updateWithId} zone={zone} />
       </div>

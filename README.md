@@ -88,11 +88,24 @@ src/store/cart.ts               Zustand cart store
 - **Checkout**: address form with a per-city delivery rate, coupon code
   entry, cash-on-delivery or card (demo) payment, server-side
   price/stock/coupon/shipping recalculation, order confirmation page.
-- **Shipping zones**: per-city delivery rate with an optional free-shipping
-  threshold, managed at `/admin/shipping`. Checkout shows a city dropdown
-  built from these zones and live-recomputes the shipping cost as the
-  customer picks a city. Falls back to a flat rate automatically if no
-  cities are configured yet, so checkout never breaks.
+  Mobile number fields (checkout, POS, new-ticket) are labeled "Mobile
+  number" and validated against the Pakistani format
+  (`03XXXXXXXXX`/`+923XXXXXXXXX`, see `src/lib/phone.ts`) both in the
+  browser and again server-side — a malformed number is rejected with a
+  clear error rather than silently accepted.
+- **Shipping zones**: per-city or per-province delivery rate with an
+  optional free-shipping threshold, managed at `/admin/shipping` (with a
+  CSV bulk import/export for setting up many rates at once from
+  `/admin/import-export`). A city-specific rate always wins over its
+  province's rate, so one town can be an exception to an otherwise-served
+  (or otherwise-excluded) province. Any rate can be marked **excluded** —
+  checkout blocks placing an order there with a clear "we don't deliver
+  here" message instead of silently charging a rate. Checkout and POS use
+  a city picker verified against a curated Pakistani city/province
+  reference (`src/lib/pakistan-locations.ts`) grouped by province, rather
+  than free-text entry, and live-recompute the shipping cost (or the
+  exclusion block) as the customer picks a city. Falls back to a flat rate
+  automatically if no rates are configured yet, so checkout never breaks.
 - **Order tracking**: customers can look up an order by order number + email
   at `/track-order`.
 - **Notifications**: order confirmation and status-change emails (Resend) and
@@ -154,6 +167,10 @@ src/store/cart.ts               Zustand cart store
   server action/API route via `requirePermission()`/`requireAnyPermission()`
   — never just hidden in the sidebar. Picker/Packer/POS Operator are
   confined to a single section the same way the original POS role was.
+  Financial figures get the same treatment at a finer grain: the admin
+  dashboard's "Total revenue" card only renders for roles holding
+  `reports.financial` (e.g. not Support), even though the dashboard itself
+  is open to every role.
 - **Audit log** (`/admin/audit-log`, admin-only): every product, order,
   coupon, bundle, shipping-zone, and user change is recorded with who did
   it and when.
@@ -178,8 +195,19 @@ src/store/cart.ts               Zustand cart store
   or manual/own rider — with a tracking number, weight, and COD amount,
   track it through pending → booked → picked up → in transit → delivered,
   and generate a printable shipping label (`/admin/orders/[id]/label`) with
-  sender/recipient address and COD amount. `/admin/shipments` is a
-  filterable manifest of every booking across couriers, also printable.
+  sender/recipient address, COD amount, and a scannable QR code encoding the
+  order. `/admin/shipments` is a filterable manifest of every booking across
+  couriers, also printable, with a **Track** link per row (and in the
+  customer quick-search popup's recent-orders list) that jumps straight to
+  the courier's public tracking page. A **"Scan to update"** box on
+  `/admin/shipments` lets staff scan a label's QR code (or paste it) and
+  tap Picked up / In transit / Delivered to advance that shipment's status
+  in one step instead of hunting the order down by number.
+- **Bulk shipping labels** (`/admin/orders/labels?ids=...`): select any
+  number of orders from the Orders list (or the dashboard's packed-orders
+  widget) and print all their labels in one batch, each on its own page —
+  orders without a courier booked yet are called out and skipped rather
+  than silently omitted.
 - **Support tickets** (`/admin/tickets`): log a customer call, WhatsApp
   message, or complaint as a ticket (category, priority, status, optional
   order link), reply in a threaded conversation with public replies and
@@ -257,16 +285,52 @@ src/store/cart.ts               Zustand cart store
     with real credentials yet, so tracking numbers are still entered by
     hand, exactly as before.
 - **Warehouse pick & pack** (`/admin/warehouse`): confirmed orders enter a
-  pick queue sorted by priority. Each order has a scan screen — type or
-  scan a barcode/SKU (works with any USB/Bluetooth scanner acting as a
-  keyboard, or manual entry on a phone) to check off that unit against the
-  order; over-scanning or unmatched codes are rejected, and "mark packed"
-  stays disabled until every line item is fully picked, then moves the
-  order to shipped with a timestamped audit trail. The same rules are
-  enforced by a documented `/api/warehouse/*` API surface (product
-  lookup by barcode/SKU, pick queue, scan, mark-packed) for a future
-  Android/handheld scanner app — the web UI keeps working with or
+  pick queue sorted by priority, filterable by warehouse once more than one
+  exists. Each order has a scan screen — type or scan a barcode/SKU (works
+  with any USB/Bluetooth scanner acting as a keyboard, or manual entry on a
+  phone) to check off that unit against the order; over-scanning or
+  unmatched codes are rejected, and "mark packed" stays disabled until every
+  line item is fully picked, then moves the order to **packed** (not
+  shipped — see below) with a timestamped audit trail. A **"Print pick
+  list"** button on the queue generates a single printable sheet for every
+  order currently waiting: a consolidated pick-total per SKU (so a picker
+  can grab all of one item at once) followed by a per-order breakdown. The
+  same rules are enforced by a documented `/api/warehouse/*` API surface
+  (product lookup by barcode/SKU, pick queue, scan, mark-packed) for a
+  future Android/handheld scanner app — the web UI keeps working with or
   without it.
+- **Multi-warehouse inventory** (`/admin/warehouses`): stock is tracked
+  per physical location, not as one global number — each warehouse holds
+  its own `WarehouseStock` pool per product, and `Product.stock` is kept as
+  a live cross-warehouse total for anything that only needs "is this in
+  stock at all" (storefront, POS, low-stock alerts). Add/edit warehouses
+  (name, city, active, and which one is the default fallback), and
+  **transfer stock** between them with a full before/after audit trail. New
+  orders are automatically assigned to whichever warehouse can fully cover
+  every line item — preferring one whose city matches the delivery address,
+  falling back to the default warehouse — and that location's pool (not the
+  global total) is what actually gets decremented; if no single location
+  can cover the whole order it's rejected with a clear error rather than
+  silently over-selling one location's shelf. Returns restock the order's
+  original fulfilling warehouse. The Inventory page shows a per-warehouse
+  breakdown table alongside the existing movement ledger and manual
+  adjustment form (now warehouse-scoped), and the product edit form's stock
+  field only ever moves the default warehouse's pool — everything else goes
+  through Inventory or a transfer. Deleting a warehouse that still holds
+  stock is blocked; one with order history is deactivated instead of
+  removed, matching every other "safer delete" in this app. New
+  installs start with a single "Main Warehouse" holding all stock, so
+  nothing changes until a second location is actually added.
+- **Packed ≠ shipped**: finishing pick/pack moves an order to **packed**,
+  not shipped — "shipped" previously fired the moment a warehouse staffer
+  finished packing, before any courier had actually been booked, which made
+  the order list impossible to trust. Now "shipped" only fires automatically
+  when a real courier tracking number is saved against the order (booking a
+  courier on an order that's `processing` or `packed` promotes it
+  automatically, with its own status-history entry) — the one signal that
+  actually means the package left the building. The dashboard surfaces a
+  **"Packed — awaiting courier booking"** widget so packed-but-unbooked
+  orders can't get lost between the warehouse and the courier.
 
 ## Payments
 

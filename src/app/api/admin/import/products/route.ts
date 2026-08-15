@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, slugify } from "@/lib/require-admin";
 import { parseCsv } from "@/lib/csv";
 import { logAudit } from "@/lib/audit";
+import { getDefaultWarehouse, incrementWarehouseStock, decrementWarehouseStock } from "@/lib/warehouse-stock";
 
 type RowError = { row: number; message: string };
 
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
 
   const categories = await prisma.category.findMany();
   const categoryByName = new Map(categories.map((c) => [c.name.toLowerCase(), c]));
+  const defaultWarehouse = await getDefaultWarehouse();
 
   const errors: RowError[] = [];
   let created = 0;
@@ -103,32 +105,38 @@ export async function POST(request: Request) {
       const existing = sku ? await prisma.product.findUnique({ where: { sku } }) : null;
 
       if (existing) {
-        const stockDelta = stock - existing.stock;
+        // The CSV's "stock" column always targets the default warehouse — for
+        // any other location, use per-warehouse Inventory adjustments instead.
+        const defaultLevel = await prisma.warehouseStock.findUnique({
+          where: { productId_warehouseId: { productId: existing.id, warehouseId: defaultWarehouse.id } },
+        });
+        const stockDelta = stock - (defaultLevel?.quantity ?? 0);
+        if (stockDelta < 0 && (defaultLevel?.quantity ?? 0) + stockDelta < 0) {
+          errors.push({ row: rowNum, message: `Would take default-warehouse stock below zero for SKU "${sku}"` });
+          continue;
+        }
+
         await prisma.product.update({
           where: { id: existing.id },
-          data: {
-            name,
-            categoryId: category.id,
-            price,
-            compareAtPrice,
-            costPrice,
-            barcode,
-            reorderLevel,
-            supplier,
-            weightLabel,
-            stock,
-            featured,
-          },
+          data: { name, categoryId: category.id, price, compareAtPrice, costPrice, barcode, reorderLevel, supplier, weightLabel, featured },
         });
         if (stockDelta !== 0) {
-          await prisma.inventoryMovement.create({
-            data: {
-              productId: existing.id,
-              type: "adjustment",
-              quantity: stockDelta,
-              reason: "CSV import",
-              actorEmail,
-            },
+          await prisma.$transaction(async (tx) => {
+            if (stockDelta > 0) {
+              await incrementWarehouseStock(tx, { productId: existing.id, warehouseId: defaultWarehouse.id, quantity: stockDelta });
+            } else {
+              await decrementWarehouseStock(tx, { productId: existing.id, warehouseId: defaultWarehouse.id, quantity: -stockDelta });
+            }
+            await tx.inventoryMovement.create({
+              data: {
+                productId: existing.id,
+                warehouseId: defaultWarehouse.id,
+                type: "adjustment",
+                quantity: stockDelta,
+                reason: "CSV import",
+                actorEmail,
+              },
+            });
           });
         }
         updated++;
@@ -156,10 +164,14 @@ export async function POST(request: Request) {
             images: JSON.stringify(["🌶️"]),
           },
         });
+        await prisma.warehouseStock.create({
+          data: { productId: createdProduct.id, warehouseId: defaultWarehouse.id, quantity: stock },
+        });
         if (stock > 0) {
           await prisma.inventoryMovement.create({
             data: {
               productId: createdProduct.id,
+              warehouseId: defaultWarehouse.id,
               type: "restock",
               quantity: stock,
               reason: "CSV import — initial stock",

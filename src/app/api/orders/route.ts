@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createOrder, OrderError } from "@/lib/create-order";
+import { pakistaniMobileSchema } from "@/lib/phone";
 
 const orderSchema = z.object({
   customerName: z.string().min(2).max(100),
   email: z.string().email(),
-  phone: z.string().min(7).max(20),
+  phone: pakistaniMobileSchema,
   address: z.string().min(5).max(300),
   city: z.string().min(2).max(100),
   postalCode: z.string().max(20).optional(),
@@ -28,8 +29,9 @@ export async function POST(request: Request) {
   const parsed = orderSchema.safeParse(body);
 
   if (!parsed.success) {
+    const firstMessage = parsed.error.issues[0]?.message ?? "Invalid order data";
     return NextResponse.json(
-      { error: "Invalid order data", issues: parsed.error.flatten() },
+      { error: firstMessage, issues: parsed.error.flatten() },
       { status: 400 }
     );
   }
