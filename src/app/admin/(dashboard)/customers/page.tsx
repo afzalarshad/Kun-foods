@@ -54,7 +54,7 @@ export default async function AdminCustomersPage({
   const pageQuery = (overrides: { page?: number; segment?: string }) => {
     const params = new URLSearchParams();
     if (query) params.set("q", query);
-    const seg = overrides.segment !== undefined ? overrides.segment : activeSegment;
+    const seg = "segment" in overrides ? overrides.segment : activeSegment;
     if (seg) params.set("segment", seg);
     if (overrides.page) params.set("page", String(overrides.page));
     const qs = params.toString();
@@ -97,7 +97,7 @@ export default async function AdminCustomersPage({
 
       <div className="mt-3 flex flex-wrap gap-1.5">
         <Link
-          href={pageQuery({ segment: "", page: undefined })}
+          href={pageQuery({ segment: undefined, page: undefined })}
           className={`rounded-full px-3 py-1.5 text-sm font-medium ${!activeSegment ? "bg-ink text-cream" : "bg-white hover:bg-cream-dark"}`}
         >
           All customers

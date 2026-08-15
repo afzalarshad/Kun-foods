@@ -48,8 +48,8 @@ export default async function AdminOrdersPage({
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const baseQuery = (overrides: { page?: number; q?: string; status?: string }) => {
     const params = new URLSearchParams();
-    const qVal = overrides.q !== undefined ? overrides.q : query;
-    const statusVal = overrides.status !== undefined ? overrides.status : status;
+    const qVal = "q" in overrides ? overrides.q : query;
+    const statusVal = "status" in overrides ? overrides.status : status;
     if (qVal) params.set("q", qVal);
     if (statusVal) params.set("status", statusVal);
     if (overrides.page) params.set("page", String(overrides.page));
