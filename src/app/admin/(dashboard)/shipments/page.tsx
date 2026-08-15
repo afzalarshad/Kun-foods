@@ -46,8 +46,8 @@ export default async function ShipmentsPage({
 
   const linkQuery = (overrides: { courier?: string; status?: string }) => {
     const params = new URLSearchParams();
-    const c = overrides.courier !== undefined ? overrides.courier : courier;
-    const s = overrides.status !== undefined ? overrides.status : status;
+    const c = "courier" in overrides ? overrides.courier : courier;
+    const s = "status" in overrides ? overrides.status : status;
     if (c) params.set("courier", c);
     if (s) params.set("status", s);
     const qs = params.toString();
