@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { OrdersTable } from "@/components/admin/orders-table";
+import { getSlaThresholds, orderSlaSummary } from "@/lib/sla";
+
+const OPEN_ORDER_STATUSES = new Set(["pending", "processing"]);
 
 const PAGE_SIZE = 50;
 
@@ -27,7 +30,7 @@ export default async function AdminOrdersPage({
       : {}),
   };
 
-  const [orders, total] = await Promise.all([
+  const [orders, total, thresholds] = await Promise.all([
     prisma.order.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -35,7 +38,12 @@ export default async function AdminOrdersPage({
       take: PAGE_SIZE,
     }),
     prisma.order.count({ where }),
+    getSlaThresholds(),
   ]);
+
+  const slaByOrderId = Object.fromEntries(
+    orders.filter((o) => OPEN_ORDER_STATUSES.has(o.status)).map((o) => [o.id, orderSlaSummary(o, thresholds)])
+  );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const baseQuery = (overrides: { page?: number; q?: string; status?: string }) => {
@@ -94,7 +102,7 @@ export default async function AdminOrdersPage({
       </div>
 
       <div className="mt-6">
-        <OrdersTable orders={orders} />
+        <OrdersTable orders={orders} slaByOrderId={slaByOrderId} />
       </div>
 
       {totalPages > 1 && (

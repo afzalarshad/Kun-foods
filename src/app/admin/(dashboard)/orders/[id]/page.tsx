@@ -7,6 +7,9 @@ import { OrderTimeline } from "@/components/admin/order-timeline";
 import { ReturnsPanel } from "@/components/admin/returns-panel";
 import { PaymentsPanel } from "@/components/admin/payments-panel";
 import { ShipmentPanel } from "@/components/admin/shipment-panel";
+import { getSlaThresholds, orderSlaSummary, formatDueLabel, SLA_STATE_STYLES } from "@/lib/sla";
+
+const OPEN_ORDER_STATUSES = new Set(["pending", "processing"]);
 
 export default async function AdminOrderDetailPage({
   params,
@@ -14,17 +17,21 @@ export default async function AdminOrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const order = await prisma.order.findUnique({
-    where: { id },
-    include: {
-      items: true,
-      statusEvents: { orderBy: { createdAt: "desc" } },
-      returns: { orderBy: { createdAt: "desc" } },
-      payments: { orderBy: { createdAt: "desc" } },
-      shipment: true,
-    },
-  });
+  const [order, thresholds] = await Promise.all([
+    prisma.order.findUnique({
+      where: { id },
+      include: {
+        items: true,
+        statusEvents: { orderBy: { createdAt: "desc" } },
+        returns: { orderBy: { createdAt: "desc" } },
+        payments: { orderBy: { createdAt: "desc" } },
+        shipment: true,
+      },
+    }),
+    getSlaThresholds(),
+  ]);
   if (!order) notFound();
+  const sla = OPEN_ORDER_STATUSES.has(order.status) ? orderSlaSummary(order, thresholds) : null;
 
   return (
     <div className="max-w-3xl">
@@ -46,6 +53,14 @@ export default async function AdminOrderDetailPage({
             >
               {order.source === "pos" ? "POS" : "Online"}
             </span>
+            {sla && (
+              <>
+                {" · "}
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${SLA_STATE_STYLES[sla.fulfillmentState]}`}>
+                  Fulfillment: {formatDueLabel(sla.fulfillmentDueAt, sla.fulfillmentState)}
+                </span>
+              </>
+            )}
           </p>
         </div>
         <OrderStatusForm orderId={order.id} currentStatus={order.status} />

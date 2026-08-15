@@ -278,6 +278,8 @@ model SupportTicket {
   priority     String          @default("normal") // low | normal | high | urgent
   status       String          @default("open") // open | pending | in_progress | waiting_on_customer | resolved | closed
   assignedTo   String?
+  firstResponseAt DateTime? // set when the first follow-up staff message lands (SLA response tracking)
+  resolvedAt      DateTime? // set when status moves to resolved/closed; cleared if reopened
   messages     TicketMessage[]
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt

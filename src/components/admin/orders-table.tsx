@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import type { Order } from "@prisma/client";
 import { formatPrice } from "@/lib/format";
 import { bulkAssignOrders, bulkSetOrderStatus } from "@/app/admin/(dashboard)/orders/bulk-actions";
+import { SLA_STATE_STYLES, SLA_STATE_LABELS, type SlaState } from "@/lib/sla";
 
 const statusStyles: Record<string, string> = {
   pending: "bg-saffron/20 text-saffron-dark",
@@ -23,7 +24,13 @@ const priorityDot: Record<string, string> = {
 
 const statuses = ["pending", "processing", "shipped", "delivered", "cancelled"];
 
-export function OrdersTable({ orders }: { orders: Order[] }) {
+export function OrdersTable({
+  orders,
+  slaByOrderId = {},
+}: {
+  orders: Order[];
+  slaByOrderId?: Record<string, { fulfillmentState: SlaState }>;
+}) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [assignee, setAssignee] = useState("");
   const [bulkStatus, setBulkStatus] = useState("processing");
@@ -74,6 +81,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
               <th className="px-6 py-3 font-medium">Source</th>
               <th className="px-6 py-3 font-medium">Payment</th>
               <th className="px-6 py-3 font-medium">Status</th>
+              <th className="px-6 py-3 font-medium">SLA</th>
               <th className="px-6 py-3 font-medium">Total</th>
               <th className="px-6 py-3 font-medium">Date</th>
             </tr>
@@ -81,7 +89,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
           <tbody>
             {orders.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-6 py-8 text-center text-ink-soft">
+                <td colSpan={9} className="px-6 py-8 text-center text-ink-soft">
                   No orders found.
                 </td>
               </tr>
@@ -126,6 +134,17 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                   >
                     {order.status}
                   </span>
+                </td>
+                <td className="px-6 py-3">
+                  {slaByOrderId[order.id] ? (
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${SLA_STATE_STYLES[slaByOrderId[order.id].fulfillmentState]}`}
+                    >
+                      {SLA_STATE_LABELS[slaByOrderId[order.id].fulfillmentState]}
+                    </span>
+                  ) : (
+                    <span className="text-ink-soft">—</span>
+                  )}
                 </td>
                 <td className="px-6 py-3 font-medium">{formatPrice(order.total)}</td>
                 <td className="px-6 py-3 text-ink-soft">

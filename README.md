@@ -215,7 +215,18 @@ src/store/cart.ts               Zustand cart store
   (used on shipping labels), and platform-wide toggles for email/SMS
   notifications that genuinely gate sending (not just a UI checkbox) —
   plus a read-only integration status panel showing which provider env
-  vars (Resend, Twilio, WhatsApp) are configured.
+  vars (Resend, Twilio, WhatsApp) are configured, and admin-editable SLA
+  hour thresholds (see below).
+- **SLA tracking & operations dashboard** (`/admin/operations`): live SLA
+  compliance for support tickets (first response + resolution deadlines,
+  by priority) and order fulfillment (time to ship, by priority), with
+  configurable hour thresholds per priority in Settings. Deadlines are
+  computed on the fly — `on track` / `at risk` (last 20% of the window) /
+  `breached` — and shown as badges on the tickets and orders lists and
+  detail pages. The dashboard surfaces breach/at-risk counts, rolling
+  30-day averages (first response time, resolution time, time to ship),
+  and "needs attention" lists linking straight to the overdue ticket or
+  order.
 - **Pagination, search & bulk actions**: Products, Orders, Customers, and
   Tickets lists are all searchable and paginated (50/page), each with
   multi-select bulk actions — activate/deactivate products, assign or

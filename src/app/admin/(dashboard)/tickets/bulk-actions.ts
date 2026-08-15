@@ -14,8 +14,10 @@ export async function bulkSetTicketStatus(ticketIds: string[], status: string) {
   const actorEmail = session.user.email ?? "unknown";
   const ids = idsSchema.parse(ticketIds);
   const parsedStatus = z.enum(statuses).parse(status);
+  const resolvedStatuses = new Set(["resolved", "closed"]);
+  const resolvedAt = resolvedStatuses.has(parsedStatus) ? new Date() : null;
 
-  await prisma.supportTicket.updateMany({ where: { id: { in: ids } }, data: { status: parsedStatus } });
+  await prisma.supportTicket.updateMany({ where: { id: { in: ids } }, data: { status: parsedStatus, resolvedAt } });
 
   await logAudit({
     actorEmail,
