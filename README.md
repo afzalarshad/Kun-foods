@@ -195,8 +195,19 @@ src/store/cart.ts               Zustand cart store
   or manual/own rider — with a tracking number, weight, and COD amount,
   track it through pending → booked → picked up → in transit → delivered,
   and generate a printable shipping label (`/admin/orders/[id]/label`) with
-  sender/recipient address and COD amount. `/admin/shipments` is a
-  filterable manifest of every booking across couriers, also printable.
+  sender/recipient address, COD amount, and a scannable QR code encoding the
+  order. `/admin/shipments` is a filterable manifest of every booking across
+  couriers, also printable, with a **Track** link per row (and in the
+  customer quick-search popup's recent-orders list) that jumps straight to
+  the courier's public tracking page. A **"Scan to update"** box on
+  `/admin/shipments` lets staff scan a label's QR code (or paste it) and
+  tap Picked up / In transit / Delivered to advance that shipment's status
+  in one step instead of hunting the order down by number.
+- **Bulk shipping labels** (`/admin/orders/labels?ids=...`): select any
+  number of orders from the Orders list (or the dashboard's packed-orders
+  widget) and print all their labels in one batch, each on its own page —
+  orders without a courier booked yet are called out and skipped rather
+  than silently omitted.
 - **Support tickets** (`/admin/tickets`): log a customer call, WhatsApp
   message, or complaint as a ticket (category, priority, status, optional
   order link), reply in a threaded conversation with public replies and
@@ -279,11 +290,24 @@ src/store/cart.ts               Zustand cart store
   keyboard, or manual entry on a phone) to check off that unit against the
   order; over-scanning or unmatched codes are rejected, and "mark packed"
   stays disabled until every line item is fully picked, then moves the
-  order to shipped with a timestamped audit trail. The same rules are
-  enforced by a documented `/api/warehouse/*` API surface (product
-  lookup by barcode/SKU, pick queue, scan, mark-packed) for a future
-  Android/handheld scanner app — the web UI keeps working with or
-  without it.
+  order to **packed** (not shipped — see below) with a timestamped audit
+  trail. A **"Print pick list"** button on the queue generates a single
+  printable sheet for every order currently waiting: a consolidated
+  pick-total per SKU (so a picker can grab all of one item at once) followed
+  by a per-order breakdown. The same rules are enforced by a documented
+  `/api/warehouse/*` API surface (product lookup by barcode/SKU, pick queue,
+  scan, mark-packed) for a future Android/handheld scanner app — the web UI
+  keeps working with or without it.
+- **Packed ≠ shipped**: finishing pick/pack moves an order to **packed**,
+  not shipped — "shipped" previously fired the moment a warehouse staffer
+  finished packing, before any courier had actually been booked, which made
+  the order list impossible to trust. Now "shipped" only fires automatically
+  when a real courier tracking number is saved against the order (booking a
+  courier on an order that's `processing` or `packed` promotes it
+  automatically, with its own status-history entry) — the one signal that
+  actually means the package left the building. The dashboard surfaces a
+  **"Packed — awaiting courier booking"** widget so packed-but-unbooked
+  orders can't get lost between the warehouse and the courier.
 
 ## Payments
 

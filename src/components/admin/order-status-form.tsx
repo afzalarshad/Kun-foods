@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { updateOrderStatus } from "@/app/admin/(dashboard)/actions";
 
-const statuses = ["pending", "processing", "shipped", "delivered", "cancelled"];
+const statuses = ["pending", "processing", "packed", "shipped", "delivered", "cancelled"];
 
 export function OrderStatusForm({
   orderId,

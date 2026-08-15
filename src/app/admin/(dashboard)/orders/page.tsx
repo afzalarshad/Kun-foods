@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { OrdersTable } from "@/components/admin/orders-table";
 import { getSlaThresholds, orderSlaSummary } from "@/lib/sla";
 
-const OPEN_ORDER_STATUSES = new Set(["pending", "processing"]);
+const OPEN_ORDER_STATUSES = new Set(["pending", "processing", "packed"]);
 
 const PAGE_SIZE = 50;
 
@@ -57,7 +57,7 @@ export default async function AdminOrdersPage({
     return qs ? `?${qs}` : "";
   };
 
-  const statuses = ["pending", "processing", "shipped", "delivered", "cancelled"];
+  const statuses = ["pending", "processing", "packed", "shipped", "delivered", "cancelled"];
 
   return (
     <div>

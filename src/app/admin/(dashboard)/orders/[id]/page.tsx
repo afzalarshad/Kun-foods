@@ -9,7 +9,7 @@ import { PaymentsPanel } from "@/components/admin/payments-panel";
 import { ShipmentPanel } from "@/components/admin/shipment-panel";
 import { getSlaThresholds, orderSlaSummary, formatDueLabel, SLA_STATE_STYLES } from "@/lib/sla";
 
-const OPEN_ORDER_STATUSES = new Set(["pending", "processing"]);
+const OPEN_ORDER_STATUSES = new Set(["pending", "processing", "packed"]);
 
 export default async function AdminOrderDetailPage({
   params,

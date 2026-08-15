@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { formatPrice } from "@/lib/format";
+import { getCourierAdapter } from "@/lib/providers/couriers";
 
 type SearchResult = {
   id: string;
@@ -18,7 +19,14 @@ type QuickView = {
   stats: { orderCount: number; totalSpent: number; openOrders: number; openTickets: number };
   tags: string[];
   recentNotes: { id: string; note: string; createdAt: string }[];
-  recentOrders: { id: string; orderNumber: string; status: string; total: number; createdAt: string }[];
+  recentOrders: {
+    id: string;
+    orderNumber: string;
+    status: string;
+    total: number;
+    createdAt: string;
+    shipment: { courier: string; trackingNumber: string | null } | null;
+  }[];
   recentTickets: { id: string; ticketNumber: string; subject: string; status: string }[];
 };
 
@@ -160,20 +168,35 @@ export function CustomerQuickSearch() {
                   <div className="mt-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Recent orders</p>
                     <ul className="mt-2 flex flex-col gap-1.5">
-                      {quickView.recentOrders.map((o) => (
-                        <li key={o.id}>
-                          <Link
-                            href={`/admin/orders/${o.id}`}
-                            onClick={() => setQuickView(null)}
-                            className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm hover:text-chili"
-                          >
-                            <span>
+                      {quickView.recentOrders.map((o) => {
+                        const trackingUrl =
+                          o.shipment?.trackingNumber
+                            ? getCourierAdapter(o.shipment.courier).trackingUrl(o.shipment.trackingNumber)
+                            : null;
+                        return (
+                          <li key={o.id} className="flex items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 text-sm">
+                            <Link
+                              href={`/admin/orders/${o.id}`}
+                              onClick={() => setQuickView(null)}
+                              className="flex-1 hover:text-chili"
+                            >
                               #{o.orderNumber} <span className="capitalize text-ink-soft">· {o.status}</span>
-                            </span>
+                            </Link>
                             <span className="font-medium">{formatPrice(o.total)}</span>
-                          </Link>
-                        </li>
-                      ))}
+                            {trackingUrl && (
+                              <a
+                                href={trackingUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="shrink-0 rounded-full border border-ink/20 px-2.5 py-1 text-xs font-semibold hover:bg-cream-dark"
+                              >
+                                Track
+                              </a>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}

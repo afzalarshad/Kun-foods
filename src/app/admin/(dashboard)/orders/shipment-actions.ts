@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
+import { notifyOrderStatusChanged } from "@/lib/notifications";
 import { getCourierAdapter } from "@/lib/providers/couriers";
 
 const couriers = ["leopards", "tcs", "postex", "manual"] as const;
@@ -73,6 +74,35 @@ export async function saveShipment(orderId: string, formData: FormData) {
     after: { orderId, courier: shipment.courier, trackingNumber: shipment.trackingNumber },
   });
 
+  // A real tracking number is the only trustworthy signal that the order has
+  // actually left the building — auto-promote from processing/packed to shipped
+  // instead of relying on staff to remember a separate manual status change.
+  if (trackingNumber) {
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+    if (order.status === "processing" || order.status === "packed") {
+      const updated = await prisma.order.update({
+        where: { id: orderId },
+        data: { status: "shipped" },
+        include: { items: true },
+      });
+      await prisma.orderStatusEvent.create({
+        data: { orderId, status: "shipped", note: `Courier booked — tracking ${trackingNumber}`, actorEmail },
+      });
+      await logAudit({
+        actorEmail,
+        action: "order.status_update",
+        entityType: "Order",
+        entityId: orderId,
+        before: { status: order.status },
+        after: { status: "shipped", source: "shipment-booking" },
+      });
+      notifyOrderStatusChanged(updated).catch((err) => console.error("[saveShipment] notification failed:", err));
+      revalidatePath("/admin/orders");
+      revalidatePath("/admin/warehouse");
+      revalidatePath("/admin");
+    }
+  }
+
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/shipments");
 }
@@ -97,6 +127,40 @@ export async function updateShipmentStatus(orderId: string, formData: FormData) 
 
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/shipments");
+}
+
+// Lets warehouse/dispatch staff scan the QR code printed on a shipping label
+// (see ShippingLabelCard, which encodes "order:<id>") instead of hunting the
+// order down by number, then advance its shipment status with one tap.
+export async function scanUpdateShipmentStatus(
+  rawCode: string,
+  status: (typeof shipmentStatuses)[number]
+): Promise<{ error?: string; orderNumber?: string }> {
+  const session = await requirePermission("shipping.manage");
+  const actorEmail = session.user.email ?? "unknown";
+  z.enum(shipmentStatuses).parse(status);
+
+  const match = rawCode.trim().match(/^order:(.+)$/);
+  const orderId = match ? match[1] : rawCode.trim();
+  if (!orderId) return { error: "Empty code" };
+
+  const shipment = await prisma.shipment.findUnique({ where: { orderId }, include: { order: { select: { orderNumber: true } } } });
+  if (!shipment) return { error: "No shipment booked for this code — book a courier first." };
+
+  await prisma.shipment.update({ where: { orderId }, data: { status, actorEmail } });
+
+  await logAudit({
+    actorEmail,
+    action: "shipment.status_update",
+    entityType: "Shipment",
+    entityId: shipment.id,
+    before: { status: shipment.status },
+    after: { status, source: "label-scan" },
+  });
+
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath("/admin/shipments");
+  return { orderNumber: shipment.order.orderNumber };
 }
 
 export async function generateLabel(orderId: string): Promise<{ error?: string }> {

@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 import { formatPrice } from "@/lib/format";
 import { PrintButton } from "@/components/admin/print-button";
-import { COURIERS } from "@/lib/providers/couriers";
+import { ScanDispatchWidget } from "@/components/admin/scan-dispatch-widget";
+import { COURIERS, getCourierAdapter } from "@/lib/providers/couriers";
 
 const couriers = COURIERS.map((c) => c.id);
 const statuses = ["pending", "booked", "picked_up", "in_transit", "delivered", "returned"] as const;
@@ -63,6 +64,10 @@ export default async function ShipmentsPage({
         <PrintButton />
       </div>
 
+      <div className="mt-6 print:hidden">
+        <ScanDispatchWidget />
+      </div>
+
       <div className="mt-6 flex flex-wrap gap-4 print:hidden">
         <div className="flex flex-wrap gap-1.5">
           <Link
@@ -111,35 +116,52 @@ export default async function ShipmentsPage({
               <th className="px-6 py-3 font-medium">Tracking #</th>
               <th className="px-6 py-3 font-medium">COD</th>
               <th className="px-6 py-3 font-medium">Status</th>
+              <th className="px-6 py-3 font-medium print:hidden">Track</th>
             </tr>
           </thead>
           <tbody>
             {shipments.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-ink-soft">
+                <td colSpan={8} className="px-6 py-8 text-center text-ink-soft">
                   No shipments booked yet.
                 </td>
               </tr>
             )}
-            {shipments.map((s) => (
-              <tr key={s.id} className="border-b border-ink/5 last:border-0">
-                <td className="px-6 py-3">
-                  <Link href={`/admin/orders/${s.orderId}`} className="font-medium hover:text-chili print:text-ink">
-                    #{s.order.orderNumber}
-                  </Link>
-                </td>
-                <td className="px-6 py-3">{s.order.customerName}</td>
-                <td className="px-6 py-3 text-ink-soft">{s.order.city}</td>
-                <td className="px-6 py-3">{courierLabels[s.courier] ?? s.courier}</td>
-                <td className="px-6 py-3 font-mono text-xs">{s.trackingNumber ?? "—"}</td>
-                <td className="px-6 py-3">{s.codAmount ? formatPrice(s.codAmount) : "—"}</td>
-                <td className="px-6 py-3">
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${statusStyles[s.status] ?? "bg-cream-dark"}`}>
-                    {s.status.replace("_", " ")}
-                  </span>
-                </td>
-              </tr>
-            ))}
+            {shipments.map((s) => {
+              const trackingUrl = s.trackingNumber ? getCourierAdapter(s.courier).trackingUrl(s.trackingNumber) : null;
+              return (
+                <tr key={s.id} className="border-b border-ink/5 last:border-0">
+                  <td className="px-6 py-3">
+                    <Link href={`/admin/orders/${s.orderId}`} className="font-medium hover:text-chili print:text-ink">
+                      #{s.order.orderNumber}
+                    </Link>
+                  </td>
+                  <td className="px-6 py-3">{s.order.customerName}</td>
+                  <td className="px-6 py-3 text-ink-soft">{s.order.city}</td>
+                  <td className="px-6 py-3">{courierLabels[s.courier] ?? s.courier}</td>
+                  <td className="px-6 py-3 font-mono text-xs">{s.trackingNumber ?? "—"}</td>
+                  <td className="px-6 py-3">{s.codAmount ? formatPrice(s.codAmount) : "—"}</td>
+                  <td className="px-6 py-3">
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${statusStyles[s.status] ?? "bg-cream-dark"}`}>
+                      {s.status.replace("_", " ")}
+                    </span>
+                  </td>
+                  <td className="px-6 py-3 print:hidden">
+                    {trackingUrl ? (
+                      <Link
+                        href={trackingUrl}
+                        target="_blank"
+                        className="rounded-full border border-ink/20 px-2.5 py-1 text-xs font-semibold hover:bg-cream-dark"
+                      >
+                        Track ↗
+                      </Link>
+                    ) : (
+                      <span className="text-ink-soft">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

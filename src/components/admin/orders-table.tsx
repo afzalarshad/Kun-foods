@@ -10,6 +10,7 @@ import { SLA_STATE_STYLES, SLA_STATE_LABELS, type SlaState } from "@/lib/sla";
 const statusStyles: Record<string, string> = {
   pending: "bg-saffron/20 text-saffron-dark",
   processing: "bg-plum/20 text-plum",
+  packed: "bg-saffron/30 text-saffron-dark",
   shipped: "bg-basil/20 text-basil-dark",
   delivered: "bg-basil text-white",
   cancelled: "bg-chili/20 text-chili-dark",
@@ -22,7 +23,7 @@ const priorityDot: Record<string, string> = {
   urgent: "bg-chili",
 };
 
-const statuses = ["pending", "processing", "shipped", "delivered", "cancelled"];
+const statuses = ["pending", "processing", "packed", "shipped", "delivered", "cancelled"];
 
 export function OrdersTable({
   orders,
@@ -198,6 +199,13 @@ export function OrdersTable({
               Set status
             </button>
           </div>
+          <Link
+            href={`/admin/orders/labels?ids=${[...selected].join(",")}`}
+            target="_blank"
+            className="rounded-full bg-white/10 px-4 py-1.5 text-xs font-heading font-semibold hover:bg-white/20"
+          >
+            🖨️ Print labels
+          </Link>
         </div>
       )}
     </div>

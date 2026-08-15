@@ -203,7 +203,7 @@ export async function deleteProduct(productId: string) {
   revalidatePath("/");
 }
 
-const statuses = ["pending", "processing", "shipped", "delivered", "cancelled"] as const;
+const statuses = ["pending", "processing", "packed", "shipped", "delivered", "cancelled"] as const;
 
 export async function updateOrderStatus(orderId: string, formData: FormData) {
   const session = await requirePermission("products.manage");

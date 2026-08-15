@@ -9,7 +9,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const customer = await prisma.customer.findUnique({
     where: { id },
     include: {
-      orders: { orderBy: { createdAt: "desc" }, take: 5 },
+      orders: {
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        include: { shipment: { select: { courier: true, trackingNumber: true } } },
+      },
       tags: true,
       notes: { orderBy: { createdAt: "desc" }, take: 3 },
       tickets: { orderBy: { createdAt: "desc" }, take: 3 },
@@ -45,6 +49,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       status: o.status,
       total: o.total,
       createdAt: o.createdAt,
+      shipment: o.shipment ? { courier: o.shipment.courier, trackingNumber: o.shipment.trackingNumber } : null,
     })),
     recentTickets: customer.tickets.map((t) => ({
       id: t.id,
