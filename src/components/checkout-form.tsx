@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useCart } from "@/store/cart";
 import { formatPrice } from "@/lib/format";
 import { getShippingForCity, type ShippingZonePreview } from "@/lib/shipping-preview";
+import { PAKISTAN_PROVINCES, PAKISTAN_CITIES_BY_PROVINCE } from "@/lib/pakistan-locations";
 import { ProductImage } from "@/components/product/product-image";
 import { useHydrated } from "@/lib/use-hydrated";
 
@@ -18,7 +19,7 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "card">("cod");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [city, setCity] = useState(zones[0]?.city ?? "");
+  const [city, setCity] = useState("");
   const [email, setEmail] = useState("");
 
   const [couponInput, setCouponInput] = useState("");
@@ -29,7 +30,9 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
   const [appliedPromotions, setAppliedPromotions] = useState<AppliedPromotion[]>([]);
   const promoDiscount = appliedPromotions.reduce((sum, p) => sum + p.discount, 0);
 
-  const shipping = getShippingForCity(zones, city, subtotal() - couponDiscount - promoDiscount);
+  const shippingPreview = getShippingForCity(zones, city, subtotal() - couponDiscount - promoDiscount);
+  const shipping = shippingPreview.rate;
+  const cityExcluded = city.trim().length > 0 && shippingPreview.excluded;
   const total = subtotal() - couponDiscount - promoDiscount + shipping;
 
   // Promotions apply automatically (no code) — recompute whenever the cart or email changes.
@@ -168,7 +171,10 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
                 type="tel"
                 name="phone"
                 required
-                placeholder="Phone number"
+                inputMode="tel"
+                pattern="(\+92|0092|92|0)?3\d{9}"
+                title="Enter a valid Pakistani mobile number, e.g. 03001234567"
+                placeholder="Mobile number (03XXXXXXXXX)"
                 className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
               />
             </div>
@@ -179,36 +185,39 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
               className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
             />
             <div className="grid gap-4 sm:grid-cols-2">
-              {zones.length > 0 ? (
-                <select
-                  name="city"
-                  required
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
-                >
-                  {zones.map((z) => (
-                    <option key={z.city} value={z.city}>
-                      {z.city}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  name="city"
-                  required
-                  placeholder="City"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
-                />
-              )}
+              <select
+                name="city"
+                required
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className={`rounded-2xl border bg-white px-4 py-3 focus:outline-none ${
+                  cityExcluded ? "border-chili" : "border-ink/20 focus:border-chili"
+                }`}
+              >
+                <option value="" disabled>
+                  Select your city…
+                </option>
+                {PAKISTAN_PROVINCES.map((province) => (
+                  <optgroup key={province} label={province}>
+                    {PAKISTAN_CITIES_BY_PROVINCE[province].map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
               <input
                 name="postalCode"
                 placeholder="Postal code (optional)"
                 className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
               />
             </div>
+            {cityExcluded && (
+              <p className="-mt-2 text-sm font-medium text-chili-dark">
+                Sorry, we don&apos;t currently deliver to {city}. Please choose a different city.
+              </p>
+            )}
             <textarea
               name="notes"
               placeholder="Delivery notes (optional)"
@@ -268,10 +277,10 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || cityExcluded}
             className="rounded-full bg-chili py-3.5 font-heading font-semibold text-white hover:bg-chili-dark disabled:opacity-60"
           >
-            {submitting ? "Placing order…" : `Place order — ${formatPrice(total)}`}
+            {submitting ? "Placing order…" : cityExcluded ? "Not deliverable to this city" : `Place order — ${formatPrice(total)}`}
           </button>
         </form>
 
@@ -359,7 +368,9 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
           )}
           <div className="mt-1 flex justify-between text-sm text-ink-soft">
             <span>Shipping{city ? ` (${city})` : ""}</span>
-            <span>{shipping === 0 ? "Free" : formatPrice(shipping)}</span>
+            <span className={cityExcluded ? "font-medium text-chili-dark" : ""}>
+              {cityExcluded ? "Not deliverable" : shipping === 0 ? "Free" : formatPrice(shipping)}
+            </span>
           </div>
           <div className="mt-4 flex justify-between border-t border-ink/10 pt-4 font-heading text-lg font-bold">
             <span>Total</span>

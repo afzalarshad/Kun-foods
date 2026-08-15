@@ -281,11 +281,12 @@ export async function seedDatabase(
   }
 
   for (const zone of shippingZones) {
-    await prisma.shippingZone.upsert({
-      where: { city: zone.city },
-      update: zone,
-      create: zone,
-    });
+    const existing = await prisma.shippingZone.findFirst({ where: { scope: "city", city: zone.city } });
+    if (existing) {
+      await prisma.shippingZone.update({ where: { id: existing.id }, data: { rate: zone.rate, freeAbove: zone.freeAbove } });
+    } else {
+      await prisma.shippingZone.create({ data: { scope: "city", city: zone.city, rate: zone.rate, freeAbove: zone.freeAbove } });
+    }
   }
 
   const passwordHash = await bcrypt.hash(adminPassword, 10);

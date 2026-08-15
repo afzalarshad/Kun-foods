@@ -88,11 +88,24 @@ src/store/cart.ts               Zustand cart store
 - **Checkout**: address form with a per-city delivery rate, coupon code
   entry, cash-on-delivery or card (demo) payment, server-side
   price/stock/coupon/shipping recalculation, order confirmation page.
-- **Shipping zones**: per-city delivery rate with an optional free-shipping
-  threshold, managed at `/admin/shipping`. Checkout shows a city dropdown
-  built from these zones and live-recomputes the shipping cost as the
-  customer picks a city. Falls back to a flat rate automatically if no
-  cities are configured yet, so checkout never breaks.
+  Mobile number fields (checkout, POS, new-ticket) are labeled "Mobile
+  number" and validated against the Pakistani format
+  (`03XXXXXXXXX`/`+923XXXXXXXXX`, see `src/lib/phone.ts`) both in the
+  browser and again server-side — a malformed number is rejected with a
+  clear error rather than silently accepted.
+- **Shipping zones**: per-city or per-province delivery rate with an
+  optional free-shipping threshold, managed at `/admin/shipping` (with a
+  CSV bulk import/export for setting up many rates at once from
+  `/admin/import-export`). A city-specific rate always wins over its
+  province's rate, so one town can be an exception to an otherwise-served
+  (or otherwise-excluded) province. Any rate can be marked **excluded** —
+  checkout blocks placing an order there with a clear "we don't deliver
+  here" message instead of silently charging a rate. Checkout and POS use
+  a city picker verified against a curated Pakistani city/province
+  reference (`src/lib/pakistan-locations.ts`) grouped by province, rather
+  than free-text entry, and live-recompute the shipping cost (or the
+  exclusion block) as the customer picks a city. Falls back to a flat rate
+  automatically if no rates are configured yet, so checkout never breaks.
 - **Order tracking**: customers can look up an order by order number + email
   at `/track-order`.
 - **Notifications**: order confirmation and status-change emails (Resend) and
@@ -154,6 +167,10 @@ src/store/cart.ts               Zustand cart store
   server action/API route via `requirePermission()`/`requireAnyPermission()`
   — never just hidden in the sidebar. Picker/Packer/POS Operator are
   confined to a single section the same way the original POS role was.
+  Financial figures get the same treatment at a finer grain: the admin
+  dashboard's "Total revenue" card only renders for roles holding
+  `reports.financial` (e.g. not Support), even though the dashboard itself
+  is open to every role.
 - **Audit log** (`/admin/audit-log`, admin-only): every product, order,
   coupon, bundle, shipping-zone, and user change is recorded with who did
   it and when.

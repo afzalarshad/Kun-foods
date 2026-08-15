@@ -9,6 +9,7 @@ import { logAudit } from "@/lib/audit";
 import { generateTicketNumber } from "@/lib/format";
 import { createAdminNotification } from "@/lib/admin-notifications";
 import { dispatchWebhookEvent } from "@/lib/webhooks";
+import { pakistaniMobileSchema } from "@/lib/phone";
 
 const categories = ["order", "payment", "delivery", "return", "refund", "product", "complaint", "general"] as const;
 const priorities = ["low", "normal", "high", "urgent"] as const;
@@ -22,7 +23,7 @@ export async function createTicket(formData: FormData) {
     .object({
       customerName: z.string().min(1).max(150),
       customerEmail: z.string().email(),
-      customerPhone: z.string().min(3).max(30),
+      customerPhone: pakistaniMobileSchema,
       orderId: z.string().optional(),
       subject: z.string().min(3).max(200),
       category: z.enum(categories),

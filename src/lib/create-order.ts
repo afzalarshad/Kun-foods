@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/format";
-import { getShippingRate } from "@/lib/shipping";
+import { getShippingRate, ShippingError } from "@/lib/shipping";
 import { notifyOrderCreated } from "@/lib/notifications";
 import { notifyLowStockIfNeeded } from "@/lib/admin-notifications";
 import { computePromotionsForCart } from "@/lib/promotions";
@@ -115,7 +115,15 @@ export async function createOrder(input: CreateOrderInput) {
   // An empty city means a walk-in/pickup POS sale — no delivery, no shipping charge.
   // Only look up a real shipping rate when a city was actually given.
   const rawCity = input.city.trim();
-  const shipping = rawCity ? await getShippingRate(rawCity, subtotal - discount - promoDiscount) : 0;
+  let shipping = 0;
+  if (rawCity) {
+    try {
+      shipping = await getShippingRate(rawCity, subtotal - discount - promoDiscount);
+    } catch (err) {
+      if (err instanceof ShippingError) throw new OrderError(err.message);
+      throw err;
+    }
+  }
   const total = subtotal - discount - promoDiscount + shipping;
 
   const city = rawCity || "Walk-in / Pickup";

@@ -5,7 +5,7 @@ import { DeleteButton } from "@/components/admin/delete-button";
 import { deleteShippingZone } from "@/app/admin/(dashboard)/shipping/actions";
 
 export default async function AdminShippingPage() {
-  const zones = await prisma.shippingZone.findMany({ orderBy: { city: "asc" } });
+  const zones = await prisma.shippingZone.findMany({ orderBy: [{ scope: "asc" }, { city: "asc" }, { province: "asc" }] });
 
   return (
     <div>
@@ -13,21 +13,29 @@ export default async function AdminShippingPage() {
         <div>
           <h1 className="font-heading text-3xl font-extrabold">Shipping</h1>
           <p className="mt-1 text-ink-soft">
-            {zones.length} {zones.length === 1 ? "city" : "cities"} configured
+            {zones.length} {zones.length === 1 ? "rate" : "rates"} configured
           </p>
         </div>
-        <Link
-          href="/admin/shipping/new"
-          className="rounded-full bg-chili px-5 py-2.5 font-heading font-semibold text-white hover:bg-chili-dark"
-        >
-          + Add city
-        </Link>
+        <div className="flex gap-3">
+          <Link
+            href="/admin/import-export"
+            className="rounded-full border-2 border-ink px-5 py-2.5 font-heading font-semibold hover:bg-ink hover:text-cream"
+          >
+            Bulk import (CSV)
+          </Link>
+          <Link
+            href="/admin/shipping/new"
+            className="rounded-full bg-chili px-5 py-2.5 font-heading font-semibold text-white hover:bg-chili-dark"
+          >
+            + Add rate
+          </Link>
+        </div>
       </div>
 
       {zones.length === 0 && (
         <p className="mt-6 max-w-xl rounded-2xl bg-saffron/10 px-4 py-3 text-sm text-saffron-dark">
-          No cities configured yet — checkout is using a flat fallback rate for every city. Add
-          your first city below to start setting rates per city.
+          No rates configured yet — checkout is using a flat fallback rate for every city. Add
+          your first city or province rate below.
         </p>
       )}
 
@@ -35,9 +43,10 @@ export default async function AdminShippingPage() {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-ink/10 text-ink-soft">
-              <th className="px-6 py-3 font-medium">City</th>
+              <th className="px-6 py-3 font-medium">Applies to</th>
               <th className="px-6 py-3 font-medium">Rate</th>
               <th className="px-6 py-3 font-medium">Free above</th>
+              <th className="px-6 py-3 font-medium">Delivery</th>
               <th className="px-6 py-3 font-medium">Status</th>
               <th className="px-6 py-3 font-medium"></th>
             </tr>
@@ -45,17 +54,34 @@ export default async function AdminShippingPage() {
           <tbody>
             {zones.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-ink-soft">
-                  No cities yet.
+                <td colSpan={6} className="px-6 py-8 text-center text-ink-soft">
+                  No rates yet.
                 </td>
               </tr>
             )}
             {zones.map((z) => (
               <tr key={z.id} className="border-b border-ink/5 last:border-0">
-                <td className="px-6 py-3 font-medium">{z.city}</td>
+                <td className="px-6 py-3 font-medium">
+                  {z.scope === "province" ? (
+                    <>
+                      {z.province} <span className="font-normal text-ink-soft">(province)</span>
+                    </>
+                  ) : (
+                    z.city
+                  )}
+                </td>
                 <td className="px-6 py-3">{z.rate === 0 ? "Free" : formatPrice(z.rate)}</td>
                 <td className="px-6 py-3 text-ink-soft">
                   {z.freeAbove !== null ? formatPrice(z.freeAbove) : "—"}
+                </td>
+                <td className="px-6 py-3">
+                  {z.excluded ? (
+                    <span className="rounded-full bg-chili/20 px-3 py-1 text-xs font-semibold text-chili-dark">
+                      Excluded
+                    </span>
+                  ) : (
+                    <span className="text-ink-soft">Deliverable</span>
+                  )}
                 </td>
                 <td className="px-6 py-3">
                   {z.active ? (
@@ -77,7 +103,7 @@ export default async function AdminShippingPage() {
                       Edit
                     </Link>
                     <DeleteButton
-                      confirmMessage={`Delete shipping rate for "${z.city}"?`}
+                      confirmMessage={`Delete this shipping rate?`}
                       action={deleteShippingZone.bind(null, z.id)}
                     />
                   </div>

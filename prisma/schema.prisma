@@ -298,9 +298,12 @@ model TicketMessage {
 
 model ShippingZone {
   id        String   @id @default(cuid())
-  city      String   @unique
+  scope     String   @default("city") // "city" | "province"
+  city      String? // set when scope = "city"; matched against src/lib/pakistan-locations.ts
+  province  String? // set when scope = "province"; one of PAKISTAN_PROVINCES
   rate      Int // paisa
   freeAbove Int? // paisa; order subtotal (after discount) at or above this ships free. null = never auto-free
+  excluded  Boolean  @default(false) // true = no delivery to this city/province, regardless of rate
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

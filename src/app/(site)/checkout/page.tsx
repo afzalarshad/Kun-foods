@@ -8,7 +8,14 @@ export default async function CheckoutPage() {
 
   return (
     <CheckoutForm
-      zones={zones.map((z) => ({ city: z.city, rate: z.rate, freeAbove: z.freeAbove }))}
+      zones={zones.map((z) => ({
+        scope: z.scope,
+        city: z.city,
+        province: z.province,
+        rate: z.rate,
+        freeAbove: z.freeAbove,
+        excluded: z.excluded,
+      }))}
     />
   );
 }

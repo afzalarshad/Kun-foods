@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
+import { requireAdmin } from "@/lib/require-admin";
+import { hasPermission } from "@/lib/permissions";
 
 export default async function AdminDashboardPage() {
+  const session = await requireAdmin();
+  const canViewRevenue = hasPermission(session.user.role ?? "staff", "reports.financial");
+
   const [orderCount, productCount, revenueAgg, recentOrders, lowStockProducts] = await Promise.all([
     prisma.order.count(),
     prisma.product.count(),
-    prisma.order.aggregate({ _sum: { total: true } }),
+    canViewRevenue ? prisma.order.aggregate({ _sum: { total: true } }) : Promise.resolve(null),
     prisma.order.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
     prisma.product.findMany({
       where: { reorderLevel: { not: null } },
@@ -18,7 +23,7 @@ export default async function AdminDashboardPage() {
 
   const stats = [
     { label: "Total orders", value: orderCount, icon: "📦" },
-    { label: "Total revenue", value: formatPrice(revenueAgg._sum.total ?? 0), icon: "💰" },
+    ...(canViewRevenue ? [{ label: "Total revenue", value: formatPrice(revenueAgg?._sum.total ?? 0), icon: "💰" }] : []),
     { label: "Products", value: productCount, icon: "🌶️" },
     { label: "Low stock alerts", value: lowStockAlerts.length, icon: "⚠️" },
   ];
