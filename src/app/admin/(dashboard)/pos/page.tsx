@@ -4,7 +4,7 @@ import { PosClient } from "@/components/admin/pos-client";
 
 export default async function AdminPosPage() {
   const [products, bundles, zones] = await Promise.all([
-    prisma.product.findMany({ orderBy: { name: "asc" } }),
+    prisma.product.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     prisma.bundle.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     getActiveShippingZones(),
   ]);

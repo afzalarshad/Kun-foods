@@ -167,6 +167,12 @@ src/store/cart.ts               Zustand cart store
   are matched by SKU (update) or created fresh, with per-row validation
   and an error report, plus automatic inventory-movement logging for any
   stock changes brought in by the import.
+- **Pagination, search & bulk actions**: Products, Orders, Customers, and
+  Tickets lists are all searchable and paginated (50/page), each with
+  multi-select bulk actions — activate/deactivate products, assign or
+  bulk-status orders, tag customers, and assign/resolve tickets in one
+  click. Products also have an `active` flag: deactivating a product hides
+  it from the storefront and POS without deleting its order history.
 - **Warehouse pick & pack** (`/admin/warehouse`): confirmed orders enter a
   pick queue sorted by priority. Each order has a scan screen — type or
   scan a barcode/SKU (works with any USB/Bluetooth scanner acting as a

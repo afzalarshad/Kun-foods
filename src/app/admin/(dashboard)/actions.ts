@@ -23,6 +23,7 @@ const productSchema = z.object({
   badge: z.string().max(30).optional(),
   stock: z.coerce.number().int().min(0),
   featured: z.coerce.boolean().optional(),
+  active: z.coerce.boolean().optional(),
   image: z.string().min(1).max(10),
 });
 
@@ -42,6 +43,7 @@ function parseProductForm(formData: FormData) {
     badge: formData.get("badge") || undefined,
     stock: formData.get("stock"),
     featured: formData.get("featured") === "on",
+    active: formData.get("active") === "on",
     image: formData.get("image"),
   });
 }
@@ -71,6 +73,7 @@ export async function createProduct(formData: FormData) {
       weightLabel: parsed.weightLabel || null,
       stock: parsed.stock,
       featured: parsed.featured ?? false,
+      active: parsed.active ?? true,
       categoryId: parsed.categoryId,
     },
   });
@@ -123,6 +126,7 @@ export async function updateProduct(productId: string, formData: FormData) {
       weightLabel: parsed.weightLabel || null,
       stock: parsed.stock,
       featured: parsed.featured ?? false,
+      active: parsed.active ?? true,
       categoryId: parsed.categoryId,
     },
   });

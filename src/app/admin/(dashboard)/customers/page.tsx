@@ -1,66 +1,96 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { formatPrice } from "@/lib/format";
+import { CustomersTable } from "@/components/admin/customers-table";
 
-export default async function AdminCustomersPage() {
-  const customers = await prisma.customer.findMany({
-    include: { orders: true },
-    orderBy: { createdAt: "desc" },
-  });
+const PAGE_SIZE = 50;
+
+export default async function AdminCustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; q?: string }>;
+}) {
+  const { page: pageParam, q } = await searchParams;
+  const page = Math.max(1, Number(pageParam) || 1);
+  const query = q?.trim();
+
+  const where = query
+    ? {
+        OR: [
+          { name: { contains: query, mode: "insensitive" as const } },
+          { email: { contains: query, mode: "insensitive" as const } },
+          { phone: { contains: query } },
+        ],
+      }
+    : {};
+
+  const [customers, total] = await Promise.all([
+    prisma.customer.findMany({
+      where,
+      include: { orders: { select: { total: true } } },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.customer.count({ where }),
+  ]);
+
+  const rows = customers.map((c) => ({
+    id: c.id,
+    name: c.name,
+    email: c.email,
+    phone: c.phone,
+    createdAt: c.createdAt,
+    orderCount: c.orders.length,
+    totalSpent: c.orders.reduce((sum, o) => sum + o.total, 0),
+  }));
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageQuery = (n: number) => `?${query ? `q=${encodeURIComponent(query)}&` : ""}page=${n}`;
 
   return (
     <div>
       <h1 className="font-heading text-3xl font-extrabold">Customers</h1>
-      <p className="mt-1 text-ink-soft">{customers.length} total — saved automatically from orders.</p>
+      <p className="mt-1 text-ink-soft">{total} total — saved automatically from orders.</p>
 
-      <div className="mt-8 overflow-x-auto rounded-3xl bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-ink/10 text-ink-soft">
-              <th className="px-6 py-3 font-medium">Name</th>
-              <th className="px-6 py-3 font-medium">Contact</th>
-              <th className="px-6 py-3 font-medium">Orders</th>
-              <th className="px-6 py-3 font-medium">Total spent</th>
-              <th className="px-6 py-3 font-medium">Customer since</th>
-            </tr>
-          </thead>
-          <tbody>
-            {customers.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-ink-soft">
-                  No customers yet — they&apos;ll appear here automatically after the first order.
-                </td>
-              </tr>
-            )}
-            {customers.map((c) => {
-              const totalSpent = c.orders.reduce((sum, o) => sum + o.total, 0);
-              return (
-                <tr key={c.id} className="border-b border-ink/5 last:border-0">
-                  <td className="px-6 py-3">
-                    <Link href={`/admin/customers/${c.id}`} className="font-medium hover:text-chili">
-                      {c.name}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-3 text-ink-soft">
-                    {c.email}
-                    <br />
-                    {c.phone}
-                  </td>
-                  <td className="px-6 py-3">{c.orders.length}</td>
-                  <td className="px-6 py-3 font-medium">{formatPrice(totalSpent)}</td>
-                  <td className="px-6 py-3 text-ink-soft">
-                    {new Date(c.createdAt).toLocaleDateString("en-PK", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <form className="mt-6 flex gap-2" action="/admin/customers">
+        <input
+          type="text"
+          name="q"
+          defaultValue={query}
+          placeholder="Search by name, email, or phone…"
+          className="w-full max-w-sm rounded-full border border-ink/20 bg-white px-4 py-2.5 text-sm focus:border-chili focus:outline-none"
+        />
+        <button type="submit" className="rounded-full border border-ink/20 px-4 py-2.5 text-sm font-semibold hover:bg-cream-dark">
+          Search
+        </button>
+        {query && (
+          <Link href="/admin/customers" className="rounded-full border border-ink/20 px-4 py-2.5 text-sm font-semibold hover:bg-cream-dark">
+            Clear
+          </Link>
+        )}
+      </form>
+
+      <div className="mt-6">
+        <CustomersTable customers={rows} />
       </div>
+
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-3 text-sm">
+          {page > 1 && (
+            <Link href={pageQuery(page - 1)} className="rounded-full border border-ink/20 px-4 py-1.5 hover:bg-cream-dark">
+              ← Newer
+            </Link>
+          )}
+          <span className="text-ink-soft">
+            Page {page} of {totalPages}
+          </span>
+          {page < totalPages && (
+            <Link href={pageQuery(page + 1)} className="rounded-full border border-ink/20 px-4 py-1.5 hover:bg-cream-dark">
+              Older →
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }

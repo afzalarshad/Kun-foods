@@ -1,48 +1,55 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
+import { TicketsTable } from "@/components/admin/tickets-table";
 
 const statuses = ["open", "pending", "in_progress", "waiting_on_customer", "resolved", "closed"] as const;
-
-const statusStyles: Record<string, string> = {
-  open: "bg-chili/20 text-chili-dark",
-  pending: "bg-saffron/20 text-saffron-dark",
-  in_progress: "bg-plum/20 text-plum",
-  waiting_on_customer: "bg-plum/20 text-plum",
-  resolved: "bg-basil/20 text-basil-dark",
-  closed: "bg-cream-dark text-ink-soft",
-};
-
-const priorityStyles: Record<string, string> = {
-  low: "text-ink-soft",
-  normal: "text-ink",
-  high: "text-saffron-dark",
-  urgent: "text-chili-dark",
-};
+const PAGE_SIZE = 50;
 
 export default async function TicketsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
   await requireAdmin();
-  const { status } = await searchParams;
+  const { status, page: pageParam } = await searchParams;
+  const page = Math.max(1, Number(pageParam) || 1);
 
   const openStatuses = ["open", "pending", "in_progress", "waiting_on_customer"];
   const where = status ? { status } : { status: { in: openStatuses } };
 
-  const tickets = await prisma.supportTicket.findMany({
-    where,
-    include: { customer: true, order: { select: { orderNumber: true } } },
-    orderBy: [{ priority: "desc" }, { updatedAt: "desc" }],
-  });
+  const [tickets, total] = await Promise.all([
+    prisma.supportTicket.findMany({
+      where,
+      include: { customer: true, order: { select: { orderNumber: true } } },
+      orderBy: [{ priority: "desc" }, { updatedAt: "desc" }],
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.supportTicket.count({ where }),
+  ]);
+
+  const rows = tickets.map((t) => ({
+    id: t.id,
+    ticketNumber: t.ticketNumber,
+    subject: t.subject,
+    category: t.category,
+    priority: t.priority,
+    status: t.status,
+    customerName: t.customer?.name ?? null,
+    orderNumber: t.order?.orderNumber ?? null,
+    updatedAt: t.updatedAt,
+  }));
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageQuery = (n: number) => `?${status ? `status=${status}&` : ""}page=${n}`;
 
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-heading text-3xl font-extrabold">Support tickets</h1>
-          <p className="mt-1 text-ink-soft">{tickets.length} ticket(s)</p>
+          <p className="mt-1 text-ink-soft">{total} ticket(s)</p>
         </div>
         <Link
           href="/admin/tickets/new"
@@ -70,51 +77,27 @@ export default async function TicketsPage({
         ))}
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-3xl bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-ink/10 text-ink-soft">
-              <th className="px-6 py-3 font-medium">Ticket</th>
-              <th className="px-6 py-3 font-medium">Customer</th>
-              <th className="px-6 py-3 font-medium">Category</th>
-              <th className="px-6 py-3 font-medium">Priority</th>
-              <th className="px-6 py-3 font-medium">Status</th>
-              <th className="px-6 py-3 font-medium">Updated</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tickets.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-ink-soft">
-                  Nothing here — nice and quiet.
-                </td>
-              </tr>
-            )}
-            {tickets.map((t) => (
-              <tr key={t.id} className="border-b border-ink/5 last:border-0">
-                <td className="px-6 py-3">
-                  <Link href={`/admin/tickets/${t.id}`} className="font-medium hover:text-chili">
-                    #{t.ticketNumber}
-                  </Link>
-                  <p className="text-xs text-ink-soft">{t.subject}</p>
-                  {t.order && <p className="text-xs text-ink-soft">Order #{t.order.orderNumber}</p>}
-                </td>
-                <td className="px-6 py-3">{t.customer?.name ?? "—"}</td>
-                <td className="px-6 py-3 capitalize text-ink-soft">{t.category}</td>
-                <td className={`px-6 py-3 font-medium capitalize ${priorityStyles[t.priority] ?? ""}`}>{t.priority}</td>
-                <td className="px-6 py-3">
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${statusStyles[t.status] ?? "bg-cream-dark"}`}>
-                    {t.status.replace("_", " ")}
-                  </span>
-                </td>
-                <td className="px-6 py-3 whitespace-nowrap text-ink-soft">
-                  {new Date(t.updatedAt).toLocaleDateString("en-PK", { day: "numeric", month: "short" })}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="mt-6">
+        <TicketsTable tickets={rows} />
       </div>
+
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-3 text-sm">
+          {page > 1 && (
+            <Link href={pageQuery(page - 1)} className="rounded-full border border-ink/20 px-4 py-1.5 hover:bg-cream-dark">
+              ← Newer
+            </Link>
+          )}
+          <span className="text-ink-soft">
+            Page {page} of {totalPages}
+          </span>
+          {page < totalPages && (
+            <Link href={pageQuery(page + 1)} className="rounded-full border border-ink/20 px-4 py-1.5 hover:bg-cream-dark">
+              Older →
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }

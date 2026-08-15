@@ -34,6 +34,7 @@ model Product {
   weightLabel    String? // e.g. "500g", "1kg"
   stock          Int                 @default(100)
   featured       Boolean             @default(false)
+  active         Boolean             @default(true) // hidden from storefront when false, without deleting history
   categoryId     String
   category       Category            @relation(fields: [categoryId], references: [id])
   orderItems     OrderItem[]
