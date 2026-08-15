@@ -112,7 +112,21 @@ src/store/cart.ts               Zustand cart store
 - **POS** (`/admin/pos`): create an order for an in-person or phone sale —
   pick products/bundles, apply a coupon, enter the customer, and submit. Uses
   the same order-creation logic (stock decrement, customer upsert,
-  notifications) as the storefront checkout.
+  notifications) as the storefront checkout. POS depth features:
+  - **Barcode/SKU scan**: an always-focused scan field matches a product's
+    `barcode` or `sku` and adds it to the cart on Enter, with success/error
+    feedback — works with a USB/Bluetooth barcode scanner or manual typing.
+  - **Hold & resume sale**: pause an in-progress sale (cart + customer
+    details) to serve a walk-in or take a call, then resume it later —
+    possibly from a different POS session — via the "Held (N)" list. Backed
+    by a `HeldSale` table so nothing is lost if the browser tab closes.
+  - **Split/partial payment**: toggle "Split payment" to record multiple
+    payment lines (e.g. half cash, half card) against one order — each line
+    becomes its own `Payment` record, and the order's payment method is
+    stored as `split` when more than one method is used.
+  - **Printable receipt**: every POS sale redirects to a print-friendly
+    receipt (`/admin/pos/receipt/[orderId]`) with store details from
+    Settings, line items, totals, and the payment breakdown.
 - **CRM** (`/admin/customers`): every order (storefront or POS) automatically
   creates or updates a `Customer` record keyed by email, with tags, internal
   notes, saved addresses, order count, total spent, and full order history.

@@ -324,3 +324,12 @@ model AdminNotification {
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 }
+
+model HeldSale {
+  id         String   @id @default(cuid())
+  label      String? // optional note, e.g. "Ahmed - blue shirt"
+  cart       String // JSON-encoded line items
+  customer   String // JSON-encoded customer/delivery fields
+  actorEmail String?
+  createdAt  DateTime @default(now())
+}

@@ -13,6 +13,9 @@ export type CreateOrderInput = {
   postalCode?: string;
   notes?: string;
   paymentMethod: "cod" | "card" | "cash";
+  /** Optional split/partial payment lines actually collected (POS). Falls back to a single
+   *  payment for the full total under `paymentMethod` when omitted (storefront checkout). */
+  payments?: Array<{ method: "cash" | "cod" | "card" | "bank_transfer" | "other"; amount: number }>;
   source: "web" | "pos";
   status?: string;
   couponCode?: string;
@@ -106,6 +109,8 @@ export async function createOrder(input: CreateOrderInput) {
   const address = input.address.trim() || "In-store purchase";
 
   const stockUpdates: { id: string; name: string; stock: number; reorderLevel: number | null }[] = [];
+  const distinctMethods = new Set((input.payments ?? []).map((p) => p.method));
+  const orderPaymentMethod = distinctMethods.size > 1 ? "split" : (input.payments?.[0]?.method ?? input.paymentMethod);
 
   const order = await prisma.$transaction(async (tx) => {
     const customer = await tx.customer.upsert({
@@ -131,7 +136,7 @@ export async function createOrder(input: CreateOrderInput) {
         city,
         postalCode: input.postalCode,
         notes: input.notes,
-        paymentMethod: input.paymentMethod,
+        paymentMethod: orderPaymentMethod,
         source: input.source,
         status: input.status ?? "pending",
         subtotal,
@@ -171,14 +176,27 @@ export async function createOrder(input: CreateOrderInput) {
       await tx.coupon.update({ where: { id: couponId }, data: { usedCount: { increment: 1 } } });
     }
 
-    await tx.payment.create({
-      data: {
-        orderId: created.id,
-        amount: total,
-        method: input.paymentMethod,
-        status: input.paymentMethod === "cod" ? "pending" : "paid",
-      },
-    });
+    if (input.payments && input.payments.length > 0) {
+      for (const p of input.payments) {
+        await tx.payment.create({
+          data: {
+            orderId: created.id,
+            amount: p.amount,
+            method: p.method,
+            status: p.method === "cod" ? "pending" : "paid",
+          },
+        });
+      }
+    } else {
+      await tx.payment.create({
+        data: {
+          orderId: created.id,
+          amount: total,
+          method: input.paymentMethod,
+          status: input.paymentMethod === "cod" ? "pending" : "paid",
+        },
+      });
+    }
 
     return created;
   });

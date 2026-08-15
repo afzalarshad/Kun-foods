@@ -3,10 +3,11 @@ import { getActiveShippingZones } from "@/lib/shipping";
 import { PosClient } from "@/components/admin/pos-client";
 
 export default async function AdminPosPage() {
-  const [products, bundles, zones] = await Promise.all([
+  const [products, bundles, zones, heldSales] = await Promise.all([
     prisma.product.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     prisma.bundle.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     getActiveShippingZones(),
+    prisma.heldSale.findMany({ orderBy: { createdAt: "desc" } }),
   ]);
 
   return (
@@ -21,9 +22,18 @@ export default async function AdminPosPage() {
             price: p.price,
             stock: p.stock,
             image: JSON.parse(p.images)[0] ?? "🍽️",
+            sku: p.sku,
+            barcode: p.barcode,
           }))}
           bundles={bundles.map((b) => ({ id: b.id, name: b.name, price: b.price, image: b.image }))}
           zones={zones.map((z) => ({ city: z.city, rate: z.rate, freeAbove: z.freeAbove }))}
+          heldSales={heldSales.map((h) => ({
+            id: h.id,
+            label: h.label,
+            cart: h.cart,
+            customer: h.customer,
+            createdAt: h.createdAt.toISOString(),
+          }))}
         />
       </div>
     </div>
