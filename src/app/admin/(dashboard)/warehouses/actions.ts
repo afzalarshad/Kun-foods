@@ -172,51 +172,68 @@ export async function createStockTransfer(formData: FormData): Promise<{ error?:
     prisma.product.findUniqueOrThrow({ where: { id: parsed.productId }, select: { name: true } }),
   ]);
 
-  const transfer = await prisma.$transaction(async (tx) => {
-    // Moving stock between locations doesn't touch the cross-warehouse total
-    // (Product.stock), so update WarehouseStock directly on both sides
-    // instead of going through the decrement/increment helpers.
-    await tx.warehouseStock.update({ where: { id: sourceStock.id }, data: { quantity: { decrement: parsed.quantity } } });
-    await tx.warehouseStock.upsert({
-      where: { productId_warehouseId: { productId: parsed.productId, warehouseId: parsed.toWarehouseId } },
-      create: { productId: parsed.productId, warehouseId: parsed.toWarehouseId, quantity: parsed.quantity },
-      update: { quantity: { increment: parsed.quantity } },
-    });
+  let transfer;
+  try {
+    transfer = await prisma.$transaction(async (tx) => {
+      // Moving stock between locations doesn't touch the cross-warehouse total
+      // (Product.stock), so update WarehouseStock directly on both sides
+      // instead of going through the decrement/increment helpers. The
+      // decrement is a conditional UPDATE (quantity >= needed in the WHERE
+      // clause) rather than a plain update, so two concurrent transfers of
+      // the same stock can't both pass an earlier check and over-decrement —
+      // see decrementWarehouseStock in lib/warehouse-stock.ts for the same
+      // fix applied to order creation, where this exact race caused real
+      // overselling under load testing.
+      const decremented = await tx.warehouseStock.updateMany({
+        where: { id: sourceStock.id, quantity: { gte: parsed.quantity } },
+        data: { quantity: { decrement: parsed.quantity } },
+      });
+      if (decremented.count === 0) {
+        throw new Error(`Source warehouse no longer has ${parsed.quantity} in stock.`);
+      }
+      await tx.warehouseStock.upsert({
+        where: { productId_warehouseId: { productId: parsed.productId, warehouseId: parsed.toWarehouseId } },
+        create: { productId: parsed.productId, warehouseId: parsed.toWarehouseId, quantity: parsed.quantity },
+        update: { quantity: { increment: parsed.quantity } },
+      });
 
-    const created = await tx.stockTransfer.create({
-      data: {
-        productId: parsed.productId,
-        quantity: parsed.quantity,
-        fromWarehouseId: parsed.fromWarehouseId,
-        toWarehouseId: parsed.toWarehouseId,
-        reason: parsed.reason?.trim() || null,
-        actorEmail,
-      },
-    });
-
-    await tx.inventoryMovement.createMany({
-      data: [
-        {
+      const created = await tx.stockTransfer.create({
+        data: {
           productId: parsed.productId,
-          warehouseId: parsed.fromWarehouseId,
-          type: "transfer_out",
-          quantity: -parsed.quantity,
-          reason: parsed.reason?.trim() || `Transfer to another warehouse`,
-          actorEmail,
-        },
-        {
-          productId: parsed.productId,
-          warehouseId: parsed.toWarehouseId,
-          type: "transfer_in",
           quantity: parsed.quantity,
-          reason: parsed.reason?.trim() || `Transfer from another warehouse`,
+          fromWarehouseId: parsed.fromWarehouseId,
+          toWarehouseId: parsed.toWarehouseId,
+          reason: parsed.reason?.trim() || null,
           actorEmail,
         },
-      ],
-    });
+      });
 
-    return created;
-  });
+      await tx.inventoryMovement.createMany({
+        data: [
+          {
+            productId: parsed.productId,
+            warehouseId: parsed.fromWarehouseId,
+            type: "transfer_out",
+            quantity: -parsed.quantity,
+            reason: parsed.reason?.trim() || `Transfer to another warehouse`,
+            actorEmail,
+          },
+          {
+            productId: parsed.productId,
+            warehouseId: parsed.toWarehouseId,
+            type: "transfer_in",
+            quantity: parsed.quantity,
+            reason: parsed.reason?.trim() || `Transfer from another warehouse`,
+            actorEmail,
+          },
+        ],
+      });
+
+      return created;
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Transfer failed — please try again." };
+  }
 
   await logAudit({
     actorEmail,

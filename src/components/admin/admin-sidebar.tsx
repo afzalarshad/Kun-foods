@@ -13,6 +13,7 @@ const links: NavLink[] = [
   { href: "/admin/operations", label: "Operations", icon: "⏱️", permission: "reports.view" },
   { href: "/admin/pos", label: "POS", icon: "🧾", permission: "pos.operate" },
   { href: "/admin/products", label: "Products", icon: "🌶️", permission: "products.view" },
+  { href: "/admin/categories", label: "Categories", icon: "🗂️", permission: "products.manage" },
   { href: "/admin/inventory", label: "Inventory", icon: "📋", permission: "inventory.view" },
   { href: "/admin/warehouses", label: "Warehouses", icon: "🏭", permission: "warehouses.manage" },
   { href: "/admin/warehouse", label: "Warehouse", icon: "📲", permission: "warehouse.pick" },

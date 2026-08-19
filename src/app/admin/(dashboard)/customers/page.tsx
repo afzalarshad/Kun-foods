@@ -58,7 +58,7 @@ export default async function AdminCustomersPage({
     if (seg) params.set("segment", seg);
     if (overrides.page) params.set("page", String(overrides.page));
     const qs = params.toString();
-    return qs ? `?${qs}` : "";
+    return qs ? `/admin/customers?${qs}` : "/admin/customers";
   };
 
   return (

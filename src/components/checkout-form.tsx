@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useCart } from "@/store/cart";
 import { formatPrice } from "@/lib/format";
 import { getShippingForCity, type ShippingZonePreview } from "@/lib/shipping-preview";
-import { PAKISTAN_PROVINCES, PAKISTAN_CITIES_BY_PROVINCE } from "@/lib/pakistan-locations";
+import { PAKISTAN_PROVINCES, PAKISTAN_CITIES_BY_PROVINCE, findPakistanCity } from "@/lib/pakistan-locations";
 import { ProductImage } from "@/components/product/product-image";
 import { useHydrated } from "@/lib/use-hydrated";
 
@@ -20,7 +20,15 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [city, setCity] = useState("");
+  const [postalCode, setPostalCode] = useState("");
   const [email, setEmail] = useState("");
+
+  function handleCityChange(newCity: string) {
+    setCity(newCity);
+    // Pre-fill the official postal code for the selected city — the customer can still edit it
+    // if their exact address has a more specific one.
+    setPostalCode(findPakistanCity(newCity)?.postalCode ?? "");
+  }
 
   const [couponInput, setCouponInput] = useState("");
   const [couponDiscount, setCouponDiscount] = useState(0);
@@ -189,7 +197,7 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
                 name="city"
                 required
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
+                onChange={(e) => handleCityChange(e.target.value)}
                 className={`rounded-2xl border bg-white px-4 py-3 focus:outline-none ${
                   cityExcluded ? "border-chili" : "border-ink/20 focus:border-chili"
                 }`}
@@ -209,7 +217,9 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
               </select>
               <input
                 name="postalCode"
-                placeholder="Postal code (optional)"
+                value={postalCode}
+                onChange={(e) => setPostalCode(e.target.value)}
+                placeholder="Postal code"
                 className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
               />
             </div>

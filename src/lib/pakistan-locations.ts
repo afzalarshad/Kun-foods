@@ -1,3 +1,5 @@
+import citiesData from "./pakistan-cities-data.json";
+
 export const PAKISTAN_PROVINCES = [
   "Punjab",
   "Sindh",
@@ -10,84 +12,25 @@ export const PAKISTAN_PROVINCES = [
 
 export type PakistanProvince = (typeof PAKISTAN_PROVINCES)[number];
 
-export type PakistanCity = { name: string; province: PakistanProvince };
+export type PakistanCity = { name: string; province: PakistanProvince; postalCode: string };
 
 /**
- * A curated set of major Pakistani cities/towns per province — not exhaustive (a fully
- * exhaustive list would run to thousands of towns), but covers where the vast majority of
- * orders will ship. Used to validate the city a customer selects at checkout/POS and to
- * resolve a city to its province for province-wide shipping zones and delivery exclusions.
+ * Every Pakistan Post office in the official National Post Code Directory — both Part-I
+ * (delivery post offices, ~2,500 of them once the head "GPO" entries are de-duplicated) and
+ * Part-II (non-delivery post offices, ~740). Both parts are included here on purpose: a
+ * non-delivery office still needs to be selectable so a customer whose town isn't serviced gets
+ * a clear "we don't deliver there" message instead of not finding their town at all. Which
+ * offices are actually non-deliverable is tracked separately via `ShippingZone` rows with
+ * `excluded: true` (see the shipping-exclusions CSV imported through /admin/shipping) — this
+ * file is just the reference list of valid place names, postal codes, and provinces.
+ *
+ * Data is large (3,300+ entries) so it lives in pakistan-cities-data.json rather than an inline
+ * array. Multiple postal circles within one metro (e.g. Karachi's Saddar/Alhydri/City/New
+ * Town/Korangi GPOs, Lahore's Cantt GPO) are collapsed into a single head-office city entry.
+ * Where the same place name is used by more than one post office (or collides with a head-office
+ * city name), the entry is disambiguated as "Name (Parent city)".
  */
-export const PAKISTAN_CITIES: PakistanCity[] = [
-  // Punjab
-  { name: "Lahore", province: "Punjab" },
-  { name: "Faisalabad", province: "Punjab" },
-  { name: "Rawalpindi", province: "Punjab" },
-  { name: "Multan", province: "Punjab" },
-  { name: "Gujranwala", province: "Punjab" },
-  { name: "Sialkot", province: "Punjab" },
-  { name: "Bahawalpur", province: "Punjab" },
-  { name: "Sargodha", province: "Punjab" },
-  { name: "Sheikhupura", province: "Punjab" },
-  { name: "Jhang", province: "Punjab" },
-  { name: "Rahim Yar Khan", province: "Punjab" },
-  { name: "Gujrat", province: "Punjab" },
-  { name: "Kasur", province: "Punjab" },
-  { name: "Sahiwal", province: "Punjab" },
-  { name: "Okara", province: "Punjab" },
-  { name: "Wah Cantonment", province: "Punjab" },
-  { name: "Dera Ghazi Khan", province: "Punjab" },
-  { name: "Mianwali", province: "Punjab" },
-  { name: "Chiniot", province: "Punjab" },
-  { name: "Kamoke", province: "Punjab" },
-  { name: "Muzaffargarh", province: "Punjab" },
-  { name: "Jhelum", province: "Punjab" },
-  { name: "Vehari", province: "Punjab" },
-  { name: "Attock", province: "Punjab" },
-  { name: "Bahawalnagar", province: "Punjab" },
-  // Sindh
-  { name: "Karachi", province: "Sindh" },
-  { name: "Hyderabad", province: "Sindh" },
-  { name: "Sukkur", province: "Sindh" },
-  { name: "Larkana", province: "Sindh" },
-  { name: "Mirpur Khas", province: "Sindh" },
-  { name: "Nawabshah", province: "Sindh" },
-  { name: "Jacobabad", province: "Sindh" },
-  { name: "Shikarpur", province: "Sindh" },
-  { name: "Khairpur", province: "Sindh" },
-  { name: "Dadu", province: "Sindh" },
-  { name: "Thatta", province: "Sindh" },
-  { name: "Badin", province: "Sindh" },
-  // Khyber Pakhtunkhwa
-  { name: "Peshawar", province: "Khyber Pakhtunkhwa" },
-  { name: "Mardan", province: "Khyber Pakhtunkhwa" },
-  { name: "Abbottabad", province: "Khyber Pakhtunkhwa" },
-  { name: "Mingora (Swat)", province: "Khyber Pakhtunkhwa" },
-  { name: "Kohat", province: "Khyber Pakhtunkhwa" },
-  { name: "Dera Ismail Khan", province: "Khyber Pakhtunkhwa" },
-  { name: "Bannu", province: "Khyber Pakhtunkhwa" },
-  { name: "Swabi", province: "Khyber Pakhtunkhwa" },
-  { name: "Nowshera", province: "Khyber Pakhtunkhwa" },
-  { name: "Charsadda", province: "Khyber Pakhtunkhwa" },
-  { name: "Mansehra", province: "Khyber Pakhtunkhwa" },
-  // Balochistan
-  { name: "Quetta", province: "Balochistan" },
-  { name: "Gwadar", province: "Balochistan" },
-  { name: "Turbat", province: "Balochistan" },
-  { name: "Khuzdar", province: "Balochistan" },
-  { name: "Sibi", province: "Balochistan" },
-  { name: "Chaman", province: "Balochistan" },
-  { name: "Zhob", province: "Balochistan" },
-  // Islamabad Capital Territory
-  { name: "Islamabad", province: "Islamabad Capital Territory" },
-  // Azad Jammu & Kashmir
-  { name: "Muzaffarabad", province: "Azad Jammu & Kashmir" },
-  { name: "Mirpur (AJK)", province: "Azad Jammu & Kashmir" },
-  { name: "Rawalakot", province: "Azad Jammu & Kashmir" },
-  // Gilgit-Baltistan
-  { name: "Gilgit", province: "Gilgit-Baltistan" },
-  { name: "Skardu", province: "Gilgit-Baltistan" },
-];
+export const PAKISTAN_CITIES: PakistanCity[] = citiesData as PakistanCity[];
 
 const cityLookup = new Map(PAKISTAN_CITIES.map((c) => [c.name.toLowerCase(), c]));
 

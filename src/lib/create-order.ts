@@ -134,7 +134,7 @@ export async function createOrder(input: CreateOrderInput) {
   const distinctMethods = new Set((input.payments ?? []).map((p) => p.method));
   const orderPaymentMethod = distinctMethods.size > 1 ? "split" : (input.payments?.[0]?.method ?? input.paymentMethod);
 
-  const order = await prisma.$transaction(async (tx) => {
+  const runTransaction = () => prisma.$transaction(async (tx) => {
     // Orders aren't split across locations, so the whole order must be fully
     // coverable by one warehouse's stock (see resolveFulfillmentWarehouse).
     const fulfillmentWarehouse = await resolveFulfillmentWarehouse(tx, city, neededStock);
@@ -193,7 +193,19 @@ export async function createOrder(input: CreateOrderInput) {
     });
 
     for (const [productId, qty] of neededStock) {
-      await decrementWarehouseStock(tx, { productId, warehouseId: fulfillmentWarehouse.id, quantity: qty });
+      try {
+        await decrementWarehouseStock(tx, { productId, warehouseId: fulfillmentWarehouse.id, quantity: qty });
+      } catch {
+        // resolveFulfillmentWarehouse picked this warehouse based on a read
+        // moments earlier; a concurrent order can still win the atomic
+        // decrement race in between. That's a correct rejection (no
+        // overselling), so surface it as a normal out-of-stock OrderError
+        // (400) rather than letting a generic Error fall through to the
+        // customer as a 500 "something went wrong".
+        throw new OrderError(
+          "Sorry, this item just sold out while you were checking out. Please refresh and try again."
+        );
+      }
       const updated = await tx.product.findUniqueOrThrow({ where: { id: productId } });
       stockUpdates.push(updated);
       await tx.inventoryMovement.create({
@@ -236,6 +248,30 @@ export async function createOrder(input: CreateOrderInput) {
 
     return created;
   });
+
+  // orderNumber is a short random string regenerated fresh on each call to
+  // runTransaction(), so two concurrent orders can occasionally collide on
+  // its unique constraint (found via load testing). Retry the whole
+  // transaction a few times with a freshly generated number rather than
+  // failing the customer's order over what's really just a naming clash.
+  let order;
+  let attempt = 0;
+  for (;;) {
+    try {
+      order = await runTransaction();
+      break;
+    } catch (err) {
+      attempt++;
+      const isOrderNumberClash =
+        err instanceof Error &&
+        "code" in err &&
+        err.code === "P2002" &&
+        "meta" in err &&
+        (err.meta as { target?: string[] } | undefined)?.target?.includes("orderNumber");
+      if (isOrderNumberClash && attempt < 5) continue;
+      throw err;
+    }
+  }
 
   notifyOrderCreated(order).catch((err) => console.error("[create-order] notification failed:", err));
   dispatchWebhookEvent("order.created", {

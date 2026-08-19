@@ -54,7 +54,7 @@ export default async function AdminOrdersPage({
     if (statusVal) params.set("status", statusVal);
     if (overrides.page) params.set("page", String(overrides.page));
     const qs = params.toString();
-    return qs ? `?${qs}` : "";
+    return qs ? `/admin/orders?${qs}` : "/admin/orders";
   };
 
   const statuses = ["pending", "processing", "packed", "shipped", "delivered", "cancelled"];

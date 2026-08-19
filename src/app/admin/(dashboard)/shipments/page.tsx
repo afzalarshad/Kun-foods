@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/require-admin";
 import { formatPrice } from "@/lib/format";
 import { PrintButton } from "@/components/admin/print-button";
 import { ScanDispatchWidget } from "@/components/admin/scan-dispatch-widget";
+import { CustomerNameLink } from "@/components/admin/customer-name-link";
 import { COURIERS, getCourierAdapter } from "@/lib/providers/couriers";
 
 const couriers = COURIERS.map((c) => c.id);
@@ -40,7 +41,7 @@ export default async function ShipmentsPage({
 
   const shipments = await prisma.shipment.findMany({
     where,
-    include: { order: { select: { orderNumber: true, customerName: true, city: true, total: true } } },
+    include: { order: { select: { orderNumber: true, customerId: true, customerName: true, city: true, total: true } } },
     orderBy: { createdAt: "desc" },
   });
 
@@ -51,7 +52,7 @@ export default async function ShipmentsPage({
     if (c) params.set("courier", c);
     if (s) params.set("status", s);
     const qs = params.toString();
-    return qs ? `?${qs}` : "";
+    return qs ? `/admin/shipments?${qs}` : "/admin/shipments";
   };
 
   return (
@@ -136,7 +137,9 @@ export default async function ShipmentsPage({
                       #{s.order.orderNumber}
                     </Link>
                   </td>
-                  <td className="px-6 py-3">{s.order.customerName}</td>
+                  <td className="px-6 py-3">
+                    <CustomerNameLink customerId={s.order.customerId} customerName={s.order.customerName} />
+                  </td>
                   <td className="px-6 py-3 text-ink-soft">{s.order.city}</td>
                   <td className="px-6 py-3">{courierLabels[s.courier] ?? s.courier}</td>
                   <td className="px-6 py-3 font-mono text-xs">{s.trackingNumber ?? "—"}</td>

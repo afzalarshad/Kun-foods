@@ -9,6 +9,7 @@ import {
   getCategoryBySlug,
   getProductsByCategory,
 } from "@/lib/data";
+import { dedupeByVariantGroup } from "@/lib/variants";
 import type { ProductCard as ProductCardType } from "@/lib/types";
 
 export const revalidate = 60;
@@ -58,7 +59,7 @@ export default async function CollectionPage({
   const category = isAll ? null : await getCategoryBySlug(slug);
   if (!isAll && !category) notFound();
 
-  const products = isAll ? await getAllProducts() : await getProductsByCategory(slug);
+  const products = isAll ? dedupeByVariantGroup(await getAllProducts()) : await getProductsByCategory(slug);
   const sorted = sortProducts(products, sort);
 
   const title = isAll ? "All Products" : category!.name;
