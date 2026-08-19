@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { ShippingZone } from "@prisma/client";
-import { PAKISTAN_PROVINCES, PAKISTAN_CITIES_BY_PROVINCE } from "@/lib/pakistan-locations";
+import { PAKISTAN_PROVINCES, PAKISTAN_CITIES_BY_PROVINCE, findPakistanCity } from "@/lib/pakistan-locations";
 
 type Scope = "city" | "province";
 
@@ -14,6 +14,8 @@ export function ShippingZoneForm({
   zone?: ShippingZone;
 }) {
   const [scope, setScope] = useState<Scope>((zone?.scope as Scope) ?? "city");
+  const [city, setCity] = useState(zone?.city ?? "");
+  const cityInfo = findPakistanCity(city);
 
   return (
     <form action={action} className="flex max-w-lg flex-col gap-5">
@@ -40,7 +42,8 @@ export function ShippingZoneForm({
           <select
             name="city"
             required
-            defaultValue={zone?.city ?? ""}
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
             className="w-full rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
           >
             <option value="" disabled>
@@ -48,14 +51,19 @@ export function ShippingZoneForm({
             </option>
             {PAKISTAN_PROVINCES.map((province) => (
               <optgroup key={province} label={province}>
-                {PAKISTAN_CITIES_BY_PROVINCE[province].map((city) => (
-                  <option key={city} value={city}>
-                    {city}
+                {PAKISTAN_CITIES_BY_PROVINCE[province].map((c) => (
+                  <option key={c} value={c}>
+                    {c}
                   </option>
                 ))}
               </optgroup>
             ))}
           </select>
+          {cityInfo && (
+            <p className="mt-1 text-xs text-ink-soft">
+              {cityInfo.province} · GPO postal code {cityInfo.postalCode}
+            </p>
+          )}
         </div>
       ) : (
         <div>
