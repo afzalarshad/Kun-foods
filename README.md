@@ -132,10 +132,17 @@ src/store/cart.ts               Zustand cart store
   (or otherwise-excluded) province. Any rate can be marked **excluded** —
   checkout blocks placing an order there with a clear "we don't deliver
   here" message instead of silently charging a rate. Checkout and POS use
-  a city picker verified against a curated Pakistani city/province
-  reference (`src/lib/pakistan-locations.ts`) grouped by province, rather
-  than free-text entry, and live-recompute the shipping cost (or the
-  exclusion block) as the customer picks a city. Falls back to a flat rate
+  a city picker verified against Pakistan Post's official National Post
+  Code Directory (`src/lib/pakistan-locations.ts` + the underlying
+  `pakistan-cities-data.json`, ~3,300 entries covering every delivery and
+  non-delivery post office, each with its province and postal code) grouped
+  by province, rather than free-text entry, and live-recompute the
+  shipping cost (or the exclusion block) as the customer picks a city.
+  Selecting a city also auto-fills its official postal code (still
+  editable). Non-delivery post offices are pre-loaded as **excluded**
+  shipping zones via `prisma/data/shipping-exclusions.csv` — re-import
+  that file at `/admin/import-export` any time the city reference is
+  regenerated from a newer directory. Falls back to a flat rate
   automatically if no rates are configured yet, so checkout never breaks.
 - **Order tracking**: customers can look up an order by order number + email
   at `/track-order`.
