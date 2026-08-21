@@ -108,6 +108,13 @@ h4,
   --btn-3d-shadow: var(--color-ink);
 }
 
+/* The solid chili buttons also carry Tailwind's hover:bg-chili-dark for keyboard/no-JS
+   fallback feedback, but that color shift competes with (and visually buries) the lift+shadow
+   here — keep the face color fixed on hover so the lift is the only thing that moves. */
+.btn-3d:not(.btn-3d-ink):hover {
+  background-color: var(--color-chili);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .btn-3d {
     transition: none;

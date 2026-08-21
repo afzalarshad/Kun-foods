@@ -29,7 +29,9 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   if (pathname === "/admin/login") return;
 
-  if (!req.auth?.user) {
+  // audience must be checked explicitly -- a signed-in customer session also has req.auth.user
+  // set, and must never fall through to admin route access.
+  if (!req.auth?.user || req.auth.user.audience !== "admin") {
     return NextResponse.redirect(new URL("/admin/login", req.url));
   }
 

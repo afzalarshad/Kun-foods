@@ -392,6 +392,28 @@ src/store/cart.ts               Zustand cart store
   **"Packed — awaiting courier booking"** widget so packed-but-unbooked
   orders can't get lost between the warehouse and the courier.
 
+- **Customer accounts**: shoppers can create an account (email/password, or
+  Google if `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are set) at
+  `/account/signup` and sign in at `/account/login` — guest checkout still
+  works unchanged, and an order placed as a guest links to the matching
+  account automatically (both key off the checkout email). Signed-in
+  customers get a self-service portal at `/account`: order history with
+  self-serve cancellation (while an order is still `pending`/`processing`)
+  and return requests (once `delivered`), a support-ticket inbox they can
+  open and reply to directly (internal staff notes are filtered out of what
+  they see), and a profile page for phone/address/city. This reuses NextAuth
+  — the same instance that serves `/admin/login` — so a `Session.user.audience`
+  discriminator (`"admin"` vs `"customer"`) was added to the JWT/session and
+  every existing admin gate (`requireAdmin()`, `src/proxy.ts`, the admin
+  dashboard layout) now checks it explicitly; a signed-in customer session
+  must never satisfy an admin-only check just because a session exists.
+  `src/lib/require-customer.ts` is the mirror-image gate for account pages.
+  Note for local dev: don't put a shared `layout.tsx` under a nested route
+  group inside `/account` — it triggered a Turbopack "client reference
+  manifest does not exist" bug on this Next.js version, so the portal nav
+  shell (`AccountShell`) is a plain component each gated page renders
+  itself instead of a Next layout file.
+
 ## Payments
 
 Cash on delivery is fully functional. Card/online payment is wired up as a
@@ -414,6 +436,7 @@ Variables (production), then redeploy/restart:
 | `TWILIO_PHONE_NUMBER` | Your Twilio sending number, e.g. `+15551234567`. |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | Your WhatsApp business number in international format with no `+` or spaces, e.g. `923001234567`. Enables the WhatsApp order button; hidden if unset. |
 | `LEOPARDS_API_KEY` / `TCS_API_KEY` / `POSTEX_API_KEY` | Not yet integrated against a real API — presence just flips that courier's adapter to "configured" (see Platform hardening above). Booking still requires a manual tracking number until each adapter's `createBooking` is implemented. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | From the [Google Cloud Console](https://console.cloud.google.com/apis/credentials) (OAuth 2.0 Client ID, web application). Enables "Continue with Google" on `/account/login` and `/account/signup`; without them, only email/password customer accounts are offered. |
 
 ## Production notes
 

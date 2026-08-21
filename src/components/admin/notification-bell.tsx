@@ -17,6 +17,8 @@ const typeIcons: Record<string, string> = {
   new_order: "📦",
   new_ticket: "🎫",
   return_requested: "↩️",
+  order_cancelled: "✖️",
+  ticket_reply: "💬",
 };
 
 export function NotificationBell() {

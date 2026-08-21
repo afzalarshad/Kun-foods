@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/prisma";
 
-type NotificationType = "low_stock" | "new_order" | "new_ticket" | "return_requested";
+type NotificationType =
+  | "low_stock"
+  | "new_order"
+  | "new_ticket"
+  | "return_requested"
+  | "order_cancelled"
+  | "ticket_reply";
 
 export async function createAdminNotification(input: { type: NotificationType; message: string; link?: string }) {
   try {

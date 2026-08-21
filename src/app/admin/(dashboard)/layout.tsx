@@ -7,7 +7,9 @@ import { hasPermission, CONFINED_ROLES } from "@/lib/permissions";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  if (!session?.user) redirect("/admin/login");
+  // audience must be checked explicitly -- a signed-in customer session also has session.user
+  // set, and must never render the admin shell.
+  if (!session?.user || session.user.audience !== "admin") redirect("/admin/login");
 
   const role = session.user.role ?? "staff";
   const canSearchCustomers = hasPermission(role, "customers.view");
