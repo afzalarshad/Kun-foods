@@ -123,7 +123,11 @@ src/store/cart.ts               Zustand cart store
   number" and validated against the Pakistani format
   (`03XXXXXXXXX`/`+923XXXXXXXXX`, see `src/lib/phone.ts`) both in the
   browser and again server-side — a malformed number is rejected with a
-  clear error rather than silently accepted.
+  clear error rather than silently accepted. Customer name fields
+  (checkout, POS) only accept letters and spaces, browser-side and again
+  server-side (`src/lib/name.ts`) — closes off a phishing/injection vector
+  where a name containing a link or markup would otherwise render
+  un-escaped in order notification emails and admin exports.
 - **Shipping zones**: per-city or per-province delivery rate with an
   optional free-shipping threshold, managed at `/admin/shipping` (with a
   CSV bulk import/export for setting up many rates at once from
@@ -131,15 +135,20 @@ src/store/cart.ts               Zustand cart store
   province's rate, so one town can be an exception to an otherwise-served
   (or otherwise-excluded) province. Any rate can be marked **excluded** —
   checkout blocks placing an order there with a clear "we don't deliver
-  here" message instead of silently charging a rate. Checkout and POS use
-  a city picker verified against Pakistan Post's official National Post
-  Code Directory (`src/lib/pakistan-locations.ts` + the underlying
-  `pakistan-cities-data.json`, ~3,300 entries covering every delivery and
-  non-delivery post office, each with its province and postal code) grouped
-  by province, rather than free-text entry, and live-recompute the
-  shipping cost (or the exclusion block) as the customer picks a city.
-  Selecting a city also auto-fills its official postal code (still
-  editable). Non-delivery post offices are pre-loaded as **excluded**
+  here" message instead of silently charging a rate. Checkout, POS, and
+  the admin shipping-zone form all use a type-to-filter city picker
+  (`src/components/city-combobox.tsx`) verified against Pakistan Post's
+  official National Post Code Directory (`src/lib/pakistan-locations.ts` +
+  the underlying `pakistan-cities-data.json`, ~3,300 entries covering
+  every delivery and non-delivery post office, each with its province and
+  postal code) — a plain `<select>` isn't usable at that size, so typing
+  filters a dropdown of matches instead, and the committed value can only
+  ever be an exact known city (never arbitrary typed text). Checkout also
+  has a separate province selector that narrows the city search to that
+  province; picking a city the other way auto-syncs the province field
+  back. Selecting a city auto-fills its official postal code (still
+  editable) and live-recomputes the shipping cost (or the exclusion
+  block). Non-delivery post offices are pre-loaded as **excluded**
   shipping zones via `prisma/data/shipping-exclusions.csv` — re-import
   that file at `/admin/import-export` any time the city reference is
   regenerated from a newer directory. Falls back to a flat rate

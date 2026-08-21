@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createOrder, OrderError } from "@/lib/create-order";
 import { pakistaniMobileSchema } from "@/lib/phone";
+import { personNameSchema } from "@/lib/name";
 
 const orderSchema = z.object({
-  customerName: z.string().min(2).max(100),
+  customerName: personNameSchema,
   email: z.string().email(),
   phone: pakistaniMobileSchema,
   address: z.string().min(5).max(300),

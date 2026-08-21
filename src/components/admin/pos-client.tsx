@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/format";
 import { getShippingForCity, type ShippingZonePreview } from "@/lib/shipping-preview";
-import { PAKISTAN_PROVINCES, PAKISTAN_CITIES_BY_PROVINCE } from "@/lib/pakistan-locations";
+import type { PakistanCity } from "@/lib/pakistan-locations";
+import { CityCombobox } from "@/components/city-combobox";
+import { PERSON_NAME_HTML_PATTERN } from "@/lib/name";
 import { createPosOrder } from "@/app/admin/(dashboard)/pos/actions";
 import { holdSale, resumeSale, discardHeldSale } from "@/app/admin/(dashboard)/pos/held-sales-actions";
 import { isValidPakistaniMobile } from "@/lib/phone";
@@ -392,6 +394,8 @@ export function PosClient({
             <input
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
+              pattern={PERSON_NAME_HTML_PATTERN}
+              title="Letters and spaces only — no numbers or symbols"
               placeholder="Customer name"
               className="rounded-xl border border-ink/20 px-4 py-2.5 focus:border-chili focus:outline-none"
             />
@@ -412,24 +416,16 @@ export function PosClient({
               type="email"
               className="rounded-xl border border-ink/20 px-4 py-2.5 focus:border-chili focus:outline-none"
             />
-            <select
+            <CityCombobox
               value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className={`rounded-xl border px-4 py-2.5 focus:outline-none ${
+              onSelect={(selected: PakistanCity) => setCity(selected.name)}
+              onClear={() => setCity("")}
+              invalid={cityExcluded}
+              placeholder="City for delivery (blank = walk-in/pickup)"
+              inputClassName={`w-full rounded-xl border px-4 py-2.5 focus:outline-none ${
                 cityExcluded ? "border-chili" : "border-ink/20 focus:border-chili"
               }`}
-            >
-              <option value="">Walk-in / Pickup (no shipping)</option>
-              {PAKISTAN_PROVINCES.map((province) => (
-                <optgroup key={province} label={province}>
-                  {PAKISTAN_CITIES_BY_PROVINCE[province].map((c) => (
-                    <option key={c} value={c}>
-                      {c} delivery
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+            />
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
