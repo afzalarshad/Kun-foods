@@ -39,7 +39,7 @@ export default async function Home() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/collections/all"
-                className="rounded-full bg-chili px-7 py-3.5 font-heading font-semibold text-white shadow-lg shadow-chili/20 hover:bg-chili-dark"
+                className="btn-3d rounded-full bg-chili px-7 py-3.5 font-heading font-semibold text-white hover:bg-chili-dark"
               >
                 Shop all products
               </Link>

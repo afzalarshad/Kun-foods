@@ -78,7 +78,7 @@ export default async function OrderConfirmationPage({
       <div className="mt-8 flex justify-center gap-3">
         <Link
           href="/collections/all"
-          className="rounded-full bg-chili px-6 py-3 font-heading font-semibold text-white hover:bg-chili-dark"
+          className="btn-3d rounded-full bg-chili px-6 py-3 font-heading font-semibold text-white hover:bg-chili-dark"
         >
           Continue shopping
         </Link>

@@ -20,7 +20,7 @@ export default function CartPage() {
         <p className="text-ink-soft">Looks like you haven&apos;t added anything yet.</p>
         <Link
           href="/collections/all"
-          className="mt-2 rounded-full bg-chili px-7 py-3 font-heading font-semibold text-white hover:bg-chili-dark"
+          className="btn-3d mt-2 rounded-full bg-chili px-7 py-3 font-heading font-semibold text-white hover:bg-chili-dark"
         >
           Start shopping
         </Link>
@@ -111,7 +111,7 @@ export default function CartPage() {
           </div>
           <Link
             href="/checkout"
-            className="mt-6 block w-full rounded-full bg-chili py-3.5 text-center font-heading font-semibold text-white hover:bg-chili-dark"
+            className="btn-3d mt-6 block w-full rounded-full bg-chili py-3.5 text-center font-heading font-semibold text-white hover:bg-chili-dark"
           >
             Proceed to checkout
           </Link>

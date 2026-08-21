@@ -46,7 +46,7 @@ export function CartDrawer() {
               <Link
                 href="/collections/all"
                 onClick={close}
-                className="mt-2 rounded-full bg-chili px-5 py-2 font-heading font-semibold text-white hover:bg-chili-dark"
+                className="btn-3d mt-2 rounded-full bg-chili px-5 py-2 font-heading font-semibold text-white hover:bg-chili-dark"
               >
                 Start shopping
               </Link>
@@ -127,7 +127,7 @@ export function CartDrawer() {
             <Link
               href="/checkout"
               onClick={close}
-              className="block w-full rounded-full bg-chili py-3 text-center font-heading font-semibold text-white hover:bg-chili-dark"
+              className="btn-3d block w-full rounded-full bg-chili py-3 text-center font-heading font-semibold text-white hover:bg-chili-dark"
             >
               Checkout
             </Link>

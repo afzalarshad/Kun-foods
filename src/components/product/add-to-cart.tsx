@@ -51,7 +51,7 @@ export function AddToCart({
           setAdded(true);
           setTimeout(() => setAdded(false), 1800);
         }}
-        className="flex-1 rounded-full bg-chili py-3.5 font-heading font-semibold text-white shadow-lg shadow-chili/20 transition-colors hover:bg-chili-dark disabled:cursor-not-allowed disabled:bg-ink/20 disabled:text-ink-soft disabled:shadow-none"
+        className="btn-3d flex-1 rounded-full bg-chili py-3.5 font-heading font-semibold text-white transition-colors hover:bg-chili-dark disabled:cursor-not-allowed disabled:bg-ink/20 disabled:text-ink-soft"
       >
         {!inStock ? "Out of stock" : added ? "Added to cart ✓" : "Add to cart"}
       </button>

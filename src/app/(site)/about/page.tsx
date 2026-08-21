@@ -40,7 +40,7 @@ export default function AboutPage() {
       <div className="mt-14 text-center">
         <Link
           href="/collections/all"
-          className="rounded-full bg-chili px-7 py-3.5 font-heading font-semibold text-white hover:bg-chili-dark"
+          className="btn-3d rounded-full bg-chili px-7 py-3.5 font-heading font-semibold text-white hover:bg-chili-dark"
         >
           Shop our products
         </Link>
