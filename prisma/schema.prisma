@@ -134,17 +134,18 @@ model BundleItem {
 }
 
 model Coupon {
-  id          String    @id @default(cuid())
-  code        String    @unique
-  type        String // "percentage" | "fixed"
-  value       Int // 1-100 for percentage, paisa amount for fixed
-  minSubtotal Int       @default(0)
-  usageLimit  Int?
-  usedCount   Int       @default(0)
-  active      Boolean   @default(true)
-  expiresAt   DateTime?
-  orders      Order[]
-  createdAt   DateTime  @default(now())
+  id            String    @id @default(cuid())
+  code          String    @unique
+  type          String // "percentage" | "fixed"
+  value         Int // 1-100 for percentage, paisa amount for fixed
+  minSubtotal   Int       @default(0)
+  usageLimit    Int?
+  usedCount     Int       @default(0)
+  active        Boolean   @default(true)
+  firstOrderOnly Boolean  @default(false) // restricts redemption to emails with no prior orders (the first-visit discount popup)
+  expiresAt     DateTime?
+  orders        Order[]
+  createdAt     DateTime  @default(now())
 }
 
 model Promotion {

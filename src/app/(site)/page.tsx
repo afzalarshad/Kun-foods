@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { ProductImage } from "@/components/product/product-image";
-import { ProductCard } from "@/components/product/product-card";
-import { getCategories, getFeaturedProducts } from "@/lib/data";
+import { getCategories, getFeaturedProducts, getNewestProducts } from "@/lib/data";
+import { ExploreRange } from "@/components/home/explore-range";
+import { BehindTheScenes } from "@/components/home/behind-the-scenes";
+import { NewProductsCarousel } from "@/components/home/new-products-carousel";
 
 export const revalidate = 60;
 
 export default async function Home() {
-  const [categories, featured] = await Promise.all([
+  const [categories, featured, newest] = await Promise.all([
     getCategories(),
-    getFeaturedProducts(8),
+    getFeaturedProducts(10),
+    getNewestProducts(10),
   ]);
 
   return (
@@ -100,23 +103,14 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Featured products */}
-      <section className="mx-auto max-w-7xl px-4 py-4 sm:py-8">
-        <div className="mb-10 flex items-end justify-between gap-4">
-          <div>
-            <h2 className="font-heading text-3xl font-extrabold sm:text-4xl">Customer favorites</h2>
-            <p className="mt-2 text-ink-soft">The products our customers keep coming back for.</p>
-          </div>
-          <Link href="/collections/all" className="hidden font-semibold text-chili hover:underline sm:block">
-            View all →
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
-          {featured.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </section>
+      {/* Explore the range -- inline quantity + add to cart, no detour to the product page needed */}
+      <ExploreRange products={featured} />
+
+      {/* Behind the scenes */}
+      <BehindTheScenes />
+
+      {/* Try our new products */}
+      <NewProductsCarousel products={newest} />
 
       {/* Story banner */}
       <section className="relative mx-4 my-20 overflow-hidden rounded-[2.5rem] bg-basil px-6 py-16 text-center text-white sm:mx-auto sm:max-w-7xl sm:px-16">

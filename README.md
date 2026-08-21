@@ -413,6 +413,44 @@ src/store/cart.ts               Zustand cart store
   manifest does not exist" bug on this Next.js version, so the portal nav
   shell (`AccountShell`) is a plain component each gated page renders
   itself instead of a Next layout file.
+- **Recipes**: a lightweight CMS (`Recipe` model) with admin CRUD at
+  `/admin/recipes` (gated by the new `content.manage` permission) and a
+  storefront listing/detail at `/recipes` — only `published` recipes are
+  public. Body text is plain text rendered with line breaks preserved (no
+  Markdown renderer is wired in).
+- **Header/nav restructure**: the top nav is just Shop / Recipes / Our Story
+  / Contact — per-category links moved into the Shop (`/collections/all`)
+  page as filter chips (alongside a Deals chip), and the redundant "Shop
+  now" button next to the cart icon is gone. A search icon opens a
+  live-filtered product dropdown (`/api/search`), and a login/account icon
+  next to it links to `/account` or `/account/login` depending on session
+  state — that icon is a client component using `useSession()` rather than
+  reading the session server-side in the header, since a server-side
+  `auth()` call there would force every storefront page dynamic (no more
+  static/ISR) just to render one icon.
+- **Track order**: phone-number search only (order number is now optional,
+  used to narrow results) — shows every order placed under that mobile
+  number instead of requiring a single order number + email pair.
+- **First-order discount popup**: a one-time popup (localStorage-gated)
+  offering an admin-configurable percentage off, unlocked by entering an
+  email. It applies a fixed coupon code (`WELCOME`, `Coupon.firstOrderOnly`)
+  that's enforced server-side (rejected if that email already has an
+  order) both at coupon-validate time and again authoritatively in
+  `createOrder()`. Configure the percentage (0 disables the popup) under
+  Settings → "First-order discount popup".
+- **Homepage redesign**: restructured in a shopnoms.com-style layout — an
+  "Explore the range" horizontal carousel with an inline quantity stepper
+  and Add to Cart per card (no detour to the product page), a "Behind the
+  Scenes" section (video placeholder — swap in real production footage
+  when it's ready), and a "Try our new products" carousel of the newest
+  active products.
+- **Checkout redesign**: split into numbered Contact / Delivery / Payment
+  method / Billing address sections. Billing address only appears for card
+  payments (COD has no use for it) and defaults to "same as shipping" with
+  a live summary; unchecking it reveals separate billing fields. Billing
+  data isn't sent to the order API yet — there's no real payment gateway
+  to consume it (see Payments below) — it's captured client-side ready for
+  whichever gateway eventually gets plugged into `handleSubmit`.
 
 ## Payments
 

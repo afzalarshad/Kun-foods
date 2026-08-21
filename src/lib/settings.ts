@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { FIRST_ORDER_COUPON_CODE } from "@/lib/promo-constants";
 
 const SLA_PRIORITIES = ["urgent", "high", "normal", "low"] as const;
 
@@ -21,7 +22,10 @@ export const SETTING_KEYS = {
   storePhone: "store.phone",
   emailNotificationsEnabled: "notifications.email_enabled",
   smsNotificationsEnabled: "notifications.sms_enabled",
+  firstOrderDiscountPercent: "promo.first_order_discount_percent",
 } as const;
+
+export { FIRST_ORDER_COUPON_CODE };
 
 const SLA_DEFAULT_HOURS = {
   ticketResponseHours: { urgent: "1", high: "4", normal: "24", low: "48" },
@@ -35,6 +39,7 @@ const DEFAULTS: Record<string, string> = {
   [SETTING_KEYS.storePhone]: process.env.STORE_PHONE || "",
   [SETTING_KEYS.emailNotificationsEnabled]: "true",
   [SETTING_KEYS.smsNotificationsEnabled]: "true",
+  [SETTING_KEYS.firstOrderDiscountPercent]: "0",
   ...Object.fromEntries(
     (Object.keys(SLA_DEFAULT_HOURS) as (keyof typeof SLA_DEFAULT_HOURS)[]).flatMap((metric) =>
       SLA_PRIORITIES.map((p) => [SLA_SETTING_KEYS[metric][p], SLA_DEFAULT_HOURS[metric][p]])

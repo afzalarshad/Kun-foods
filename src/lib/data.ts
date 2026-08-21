@@ -57,6 +57,17 @@ export async function getProductVariants(variantGroupId: string, excludeId: stri
   return products;
 }
 
+/** Most recently added products, for the homepage's "Try our new products" carousel. */
+export async function getNewestProducts(limit = 10): Promise<ProductCard[]> {
+  const products = await prisma.product.findMany({
+    where: { active: true },
+    include: { category: true },
+    orderBy: { createdAt: "desc" },
+    take: limit * 2, // headroom for variant dedupe
+  });
+  return dedupeByVariantGroup(products).slice(0, limit).map(toProductCard);
+}
+
 export async function getRelatedProducts(categorySlug: string, excludeSlug: string, limit = 4): Promise<ProductCard[]> {
   const excludeProduct = await prisma.product.findUnique({ where: { slug: excludeSlug }, select: { variantGroupId: true } });
   const products = await prisma.product.findMany({

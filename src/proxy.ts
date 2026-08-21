@@ -23,6 +23,7 @@ const ROUTE_PERMISSIONS: [string, Permission[]][] = [
   ["/admin/reports", ["reports.view"]],
   ["/admin/orders", ["orders.view"]],
   ["/admin/customers", ["customers.view"]],
+  ["/admin/recipes", ["content.manage"]],
 ];
 
 export default auth((req) => {

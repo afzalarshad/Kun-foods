@@ -13,8 +13,62 @@ type OrderResult = {
 
 const statusSteps = ["pending", "processing", "packed", "shipped", "delivered"];
 
+function OrderCard({ order }: { order: OrderResult }) {
+  return (
+    <div className="rounded-3xl bg-cream-dark p-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-heading font-bold">Order #{order.orderNumber}</h2>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold capitalize">
+          {order.status}
+        </span>
+      </div>
+
+      {statusSteps.includes(order.status) && (
+        <div className="mt-5 flex items-center">
+          {statusSteps.map((step, i) => {
+            const currentIndex = statusSteps.indexOf(order.status);
+            const done = i <= currentIndex;
+            return (
+              <div key={step} className="flex flex-1 items-center last:flex-none">
+                <div className="flex flex-col items-center gap-1">
+                  <span
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                      done ? "bg-basil text-white" : "bg-white text-ink-soft"
+                    }`}
+                  >
+                    {done ? "✓" : i + 1}
+                  </span>
+                  <span className="text-[11px] capitalize text-ink-soft">{step}</span>
+                </div>
+                {i < statusSteps.length - 1 && (
+                  <div className={`mx-1 h-0.5 flex-1 ${done ? "bg-basil" : "bg-white"}`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <ul className="mt-6 flex flex-col gap-2 border-t border-ink/10 pt-4">
+        {order.items.map((item) => (
+          <li key={item.id} className="flex justify-between text-sm">
+            <span>
+              {item.name} × {item.quantity}
+            </span>
+            <span className="font-medium">{formatPrice(item.price * item.quantity)}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-3 flex justify-between border-t border-ink/10 pt-3 font-heading font-bold">
+        <span>Total</span>
+        <span>{formatPrice(order.total)}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function TrackOrderPage() {
-  const [order, setOrder] = useState<OrderResult | null>(null);
+  const [orders, setOrders] = useState<OrderResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -22,13 +76,12 @@ export default function TrackOrderPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setOrder(null);
+    setOrders(null);
 
     const form = new FormData(e.currentTarget);
-    const params = new URLSearchParams({
-      orderNumber: String(form.get("orderNumber")),
-      email: String(form.get("email")),
-    });
+    const params = new URLSearchParams({ phone: String(form.get("phone")) });
+    const orderNumber = String(form.get("orderNumber") ?? "").trim();
+    if (orderNumber) params.set("orderNumber", orderNumber);
 
     const res = await fetch(`/api/orders/track?${params}`);
     const data = await res.json();
@@ -36,7 +89,7 @@ export default function TrackOrderPage() {
     if (!res.ok) {
       setError(data.error ?? "Something went wrong.");
     } else {
-      setOrder(data.order);
+      setOrders(data.orders);
     }
     setLoading(false);
   }
@@ -45,21 +98,24 @@ export default function TrackOrderPage() {
     <div className="mx-auto max-w-2xl px-4 py-14 sm:py-20">
       <h1 className="font-heading text-4xl font-extrabold">Track your order</h1>
       <p className="mt-3 text-ink-soft">
-        Enter your order number and the email you used at checkout.
+        Enter the mobile number you used at checkout. We&apos;ll show every order placed
+        with that number — or narrow it down with an order number if you have it.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4 sm:flex-row">
         <input
-          name="orderNumber"
+          type="tel"
+          name="phone"
           required
-          placeholder="Order number (e.g. KF2608-1234)"
+          inputMode="tel"
+          pattern="(\+92|0092|92|0)?3\d{9}"
+          title="Enter a valid Pakistani mobile number, e.g. 03001234567"
+          placeholder="Mobile number (03XXXXXXXXX)"
           className="flex-1 rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
         />
         <input
-          type="email"
-          name="email"
-          required
-          placeholder="Email"
+          name="orderNumber"
+          placeholder="Order number (optional)"
           className="flex-1 rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
         />
         <button
@@ -77,55 +133,16 @@ export default function TrackOrderPage() {
         </p>
       )}
 
-      {order && (
-        <div className="mt-8 rounded-3xl bg-cream-dark p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="font-heading font-bold">Order #{order.orderNumber}</h2>
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold capitalize">
-              {order.status}
-            </span>
-          </div>
-
-          {statusSteps.includes(order.status) && (
-            <div className="mt-5 flex items-center">
-              {statusSteps.map((step, i) => {
-                const currentIndex = statusSteps.indexOf(order.status);
-                const done = i <= currentIndex;
-                return (
-                  <div key={step} className="flex flex-1 items-center last:flex-none">
-                    <div className="flex flex-col items-center gap-1">
-                      <span
-                        className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
-                          done ? "bg-basil text-white" : "bg-white text-ink-soft"
-                        }`}
-                      >
-                        {done ? "✓" : i + 1}
-                      </span>
-                      <span className="text-[11px] capitalize text-ink-soft">{step}</span>
-                    </div>
-                    {i < statusSteps.length - 1 && (
-                      <div className={`mx-1 h-0.5 flex-1 ${done ? "bg-basil" : "bg-white"}`} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+      {orders && orders.length > 0 && (
+        <div className="mt-8 flex flex-col gap-6">
+          {orders.length > 1 && (
+            <p className="text-sm text-ink-soft">
+              Found {orders.length} orders for this mobile number.
+            </p>
           )}
-
-          <ul className="mt-6 flex flex-col gap-2 border-t border-ink/10 pt-4">
-            {order.items.map((item) => (
-              <li key={item.id} className="flex justify-between text-sm">
-                <span>
-                  {item.name} × {item.quantity}
-                </span>
-                <span className="font-medium">{formatPrice(item.price * item.quantity)}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-3 flex justify-between border-t border-ink/10 pt-3 font-heading font-bold">
-            <span>Total</span>
-            <span>{formatPrice(order.total)}</span>
-          </div>
+          {orders.map((order) => (
+            <OrderCard key={order.orderNumber} order={order} />
+          ))}
         </div>
       )}
     </div>
