@@ -119,6 +119,12 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
     setSubmitting(true);
 
     const form = new FormData(e.currentTarget);
+    const houseAddress = String(form.get("houseAddress") ?? "").trim();
+    const areaAddress = String(form.get("areaAddress") ?? "").trim();
+    const landmark = String(form.get("landmark") ?? "").trim();
+    const address = [houseAddress, areaAddress, landmark ? `Near ${landmark}` : ""]
+      .filter(Boolean)
+      .join(", ");
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
@@ -127,7 +133,7 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
           customerName: form.get("customerName"),
           email: form.get("email"),
           phone: form.get("phone"),
-          address: form.get("address"),
+          address,
           city,
           postalCode: form.get("postalCode") || undefined,
           notes: form.get("notes") || undefined,
@@ -160,7 +166,7 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
         <h1 className="font-heading text-2xl font-bold">Your cart is empty</h1>
         <Link
           href="/collections/all"
-          className="mt-2 rounded-full bg-chili px-7 py-3 font-heading font-semibold text-white hover:bg-chili-dark"
+          className="btn-3d mt-2 rounded-full bg-chili px-7 py-3 font-heading font-semibold text-white hover:bg-chili-dark"
         >
           Start shopping
         </Link>
@@ -206,9 +212,20 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
               />
             </div>
             <input
-              name="address"
+              name="houseAddress"
               required
-              placeholder="Street address"
+              placeholder="House / Flat #, Street"
+              className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+            />
+            <input
+              name="areaAddress"
+              required
+              placeholder="Area, Sector / Block, Society"
+              className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+            />
+            <input
+              name="landmark"
+              placeholder="Nearby landmark (optional) — helps the rider find you"
               className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
             />
             <div className="grid gap-4 sm:grid-cols-2">
@@ -304,7 +321,7 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
           <button
             type="submit"
             disabled={submitting || cityExcluded}
-            className="rounded-full bg-chili py-3.5 font-heading font-semibold text-white hover:bg-chili-dark disabled:opacity-60"
+            className="btn-3d rounded-full bg-chili py-3.5 font-heading font-semibold text-white hover:bg-chili-dark disabled:opacity-60"
           >
             {submitting ? "Placing order…" : cityExcluded ? "Not deliverable to this city" : `Place order — ${formatPrice(total)}`}
           </button>

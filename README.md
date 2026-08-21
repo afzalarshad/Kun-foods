@@ -102,6 +102,11 @@ src/store/cart.ts               Zustand cart store
 
 - **Storefront**: home page, category/collection pages with sorting, product
   detail pages, a Deals & Bundles page, persistent cart drawer, cart page.
+  Product cards lift with a shadow on hover, and primary buttons (Add to
+  cart, Place order, etc.) use a chunky "pressable" style — a solid color
+  ledge along the bottom that the button pushes down into on click — for
+  tactile feedback before an action fires (`.btn-3d` / `.btn-3d-ink` in
+  `src/app/globals.css`).
 - **Product variants**: give two or more products the same "variant group"
   key on the product edit form (e.g. `biryani-masala`) and a label per
   variant (e.g. "150g", "500g") to show them as one storefront listing with
@@ -118,8 +123,13 @@ src/store/cart.ts               Zustand cart store
   a revenue *and* order-count breakdown per category.
 - **Checkout**: address form with a per-city delivery rate, coupon code
   entry, cash-on-delivery or card (demo) payment, server-side
-  price/stock/coupon/shipping recalculation, order confirmation page.
-  Mobile number fields (checkout, POS, new-ticket) are labeled "Mobile
+  price/stock/coupon/shipping recalculation, order confirmation page. The
+  address form matches how Pakistani addresses are actually written —
+  separate "House / Flat #, Street", "Area, Sector / Block, Society", and
+  an optional "Nearby landmark" field (riders often navigate by landmark,
+  not street address) — joined into one string on submit; the `Order`
+  model still stores a single `address` field, so no schema change was
+  needed. Mobile number fields (checkout, POS, new-ticket) are labeled "Mobile
   number" and validated against the Pakistani format
   (`03XXXXXXXXX`/`+923XXXXXXXXX`, see `src/lib/phone.ts`) both in the
   browser and again server-side — a malformed number is rejected with a

@@ -24,7 +24,7 @@ export function AddBundleToCart({
         setAdded(true);
         setTimeout(() => setAdded(false), 1800);
       }}
-      className="w-full rounded-full bg-chili py-3 font-heading font-semibold text-white shadow-lg shadow-chili/20 hover:bg-chili-dark"
+      className="btn-3d w-full rounded-full bg-chili py-3 font-heading font-semibold text-white hover:bg-chili-dark"
     >
       {added ? "Added to cart ✓" : "Add bundle to cart"}
     </button>

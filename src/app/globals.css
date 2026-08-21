@@ -75,3 +75,41 @@ h4,
 .text-balance {
   text-wrap: balance;
 }
+
+/*
+ * Chunky, game-style "pressable" button: a solid color ledge along the bottom reads as depth,
+ * hovering lifts the button slightly (ledge grows), and clicking pushes it down into the ledge
+ * (shadow collapses to 0) for tactile feedback before the action actually fires. Default shadow
+ * tone is chili; add .btn-3d-ink for buttons on the ink-outline style.
+ */
+.btn-3d {
+  --btn-3d-shadow: var(--color-chili-dark);
+  box-shadow: 0 4px 0 0 var(--btn-3d-shadow);
+  transform: translateY(0);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.btn-3d:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 0 var(--btn-3d-shadow);
+}
+
+.btn-3d:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 0 var(--btn-3d-shadow);
+}
+
+.btn-3d:disabled {
+  box-shadow: 0 4px 0 0 var(--btn-3d-shadow);
+  transform: translateY(0);
+}
+
+.btn-3d-ink {
+  --btn-3d-shadow: var(--color-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-3d {
+    transition: none;
+  }
+}

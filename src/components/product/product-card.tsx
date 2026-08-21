@@ -16,10 +16,10 @@ export function ProductCard({ product }: { product: ProductCardType }) {
   const addItem = useCart((s) => s.addItem);
 
   return (
-    <div className="group flex flex-col">
+    <div className="group flex flex-col transition-transform duration-200 ease-out hover:-translate-y-1">
       <Link
         href={`/products/${product.slug}`}
-        className="relative block aspect-square overflow-hidden rounded-3xl bg-cream-dark p-6"
+        className="relative block aspect-square overflow-hidden rounded-3xl bg-cream-dark p-6 shadow-sm transition-shadow duration-200 group-hover:shadow-xl"
       >
         {product.badge && (
           <span
@@ -76,7 +76,7 @@ export function ProductCard({ product }: { product: ProductCardType }) {
               weightLabel: product.weightLabel,
             })
           }
-          className="mt-3 w-full rounded-full border-2 border-ink bg-transparent py-2 text-sm font-semibold font-heading text-ink transition-colors hover:bg-ink hover:text-cream"
+          className="btn-3d btn-3d-ink mt-3 w-full rounded-full border-2 border-ink bg-transparent py-2 text-sm font-semibold font-heading text-ink transition-colors hover:bg-ink hover:text-cream"
         >
           Add to cart
         </button>
