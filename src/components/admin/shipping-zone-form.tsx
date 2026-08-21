@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import type { ShippingZone } from "@prisma/client";
-import { PAKISTAN_PROVINCES, PAKISTAN_CITIES_BY_PROVINCE, findPakistanCity } from "@/lib/pakistan-locations";
+import { PAKISTAN_PROVINCES, findPakistanCity, type PakistanCity } from "@/lib/pakistan-locations";
+import { CityCombobox } from "@/components/city-combobox";
 
 type Scope = "city" | "province";
 
@@ -39,26 +40,13 @@ export function ShippingZoneForm({
       {scope === "city" ? (
         <div>
           <label className="mb-1.5 block text-sm font-medium">City</label>
-          <select
-            name="city"
-            required
+          <input type="hidden" name="city" value={city} />
+          <CityCombobox
             value={city}
-            onChange={(e) => setCity(e.target.value)}
-            className="w-full rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
-          >
-            <option value="" disabled>
-              Select a city…
-            </option>
-            {PAKISTAN_PROVINCES.map((province) => (
-              <optgroup key={province} label={province}>
-                {PAKISTAN_CITIES_BY_PROVINCE[province].map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
+            onSelect={(selected: PakistanCity) => setCity(selected.name)}
+            onClear={() => setCity("")}
+            placeholder="Type to search a city…"
+          />
           {cityInfo && (
             <p className="mt-1 text-xs text-ink-soft">
               {cityInfo.province} · GPO postal code {cityInfo.postalCode}

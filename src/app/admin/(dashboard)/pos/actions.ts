@@ -4,9 +4,10 @@ import { z } from "zod";
 import { requirePermission } from "@/lib/require-admin";
 import { createOrder, OrderError } from "@/lib/create-order";
 import { pakistaniMobileSchema } from "@/lib/phone";
+import { personNameSchema } from "@/lib/name";
 
 const posOrderSchema = z.object({
-  customerName: z.string().min(2).max(100),
+  customerName: personNameSchema,
   email: z.string().email(),
   phone: pakistaniMobileSchema,
   address: z.string().min(2).max(300).optional(),

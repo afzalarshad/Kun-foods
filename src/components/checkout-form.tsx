@@ -6,7 +6,9 @@ import { useEffect, useState } from "react";
 import { useCart } from "@/store/cart";
 import { formatPrice } from "@/lib/format";
 import { getShippingForCity, type ShippingZonePreview } from "@/lib/shipping-preview";
-import { PAKISTAN_PROVINCES, PAKISTAN_CITIES_BY_PROVINCE, findPakistanCity } from "@/lib/pakistan-locations";
+import { PAKISTAN_PROVINCES, isKnownPakistanCity, type PakistanCity, type PakistanProvince } from "@/lib/pakistan-locations";
+import { PERSON_NAME_HTML_PATTERN } from "@/lib/name";
+import { CityCombobox } from "@/components/city-combobox";
 import { ProductImage } from "@/components/product/product-image";
 import { useHydrated } from "@/lib/use-hydrated";
 
@@ -19,15 +21,25 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "card">("cod");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [province, setProvince] = useState<PakistanProvince | "">("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [email, setEmail] = useState("");
 
-  function handleCityChange(newCity: string) {
-    setCity(newCity);
+  function handleProvinceChange(newProvince: PakistanProvince | "") {
+    setProvince(newProvince);
+    // Picking a province narrows the city search — clear a city that no longer matches so the
+    // two fields never disagree.
+    setCity("");
+    setPostalCode("");
+  }
+
+  function handleCitySelect(selected: PakistanCity) {
+    setCity(selected.name);
+    setProvince(selected.province);
     // Pre-fill the official postal code for the selected city — the customer can still edit it
     // if their exact address has a more specific one.
-    setPostalCode(findPakistanCity(newCity)?.postalCode ?? "");
+    setPostalCode(selected.postalCode);
   }
 
   const [couponInput, setCouponInput] = useState("");
@@ -98,8 +110,13 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSubmitting(true);
     setError(null);
+
+    if (!isKnownPakistanCity(city)) {
+      setError("Please select a valid city from the list.");
+      return;
+    }
+    setSubmitting(true);
 
     const form = new FormData(e.currentTarget);
     try {
@@ -111,7 +128,7 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
           email: form.get("email"),
           phone: form.get("phone"),
           address: form.get("address"),
-          city: form.get("city"),
+          city,
           postalCode: form.get("postalCode") || undefined,
           notes: form.get("notes") || undefined,
           paymentMethod,
@@ -162,6 +179,8 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
             <input
               name="customerName"
               required
+              pattern={PERSON_NAME_HTML_PATTERN}
+              title="Letters and spaces only — no numbers or symbols"
               placeholder="Full name"
               className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
             />
@@ -194,33 +213,30 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
             />
             <div className="grid gap-4 sm:grid-cols-2">
               <select
-                name="city"
-                required
-                value={city}
-                onChange={(e) => handleCityChange(e.target.value)}
-                className={`rounded-2xl border bg-white px-4 py-3 focus:outline-none ${
-                  cityExcluded ? "border-chili" : "border-ink/20 focus:border-chili"
-                }`}
+                value={province}
+                onChange={(e) => handleProvinceChange(e.target.value as PakistanProvince | "")}
+                className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
               >
-                <option value="" disabled>
-                  Select your city…
-                </option>
-                {PAKISTAN_PROVINCES.map((province) => (
-                  <optgroup key={province} label={province}>
-                    {PAKISTAN_CITIES_BY_PROVINCE[province].map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </optgroup>
+                <option value="">All provinces</option>
+                {PAKISTAN_PROVINCES.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
                 ))}
               </select>
+              <CityCombobox
+                value={city}
+                onSelect={handleCitySelect}
+                province={province || undefined}
+                invalid={cityExcluded}
+                placeholder="Type to search your city…"
+              />
               <input
                 name="postalCode"
                 value={postalCode}
                 onChange={(e) => setPostalCode(e.target.value)}
                 placeholder="Postal code"
-                className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+                className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none sm:col-span-2"
               />
             </div>
             {cityExcluded && (
