@@ -6,7 +6,9 @@ export type AdminRole = string;
 
 export async function requireAdmin() {
   const session = await auth();
-  if (!session?.user) redirect("/admin/login");
+  // audience must be checked explicitly -- a signed-in customer session also has
+  // `session.user` set, and must never be treated as an admin session.
+  if (!session?.user || session.user.audience !== "admin") redirect("/admin/login");
   return session;
 }
 

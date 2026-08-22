@@ -1,10 +1,16 @@
 import Link from "next/link";
-import { getCategories } from "@/lib/data";
 import { CartButton } from "@/components/cart/cart-button";
+import { SearchButton } from "@/components/search/search-button";
+import { AccountIconButton } from "@/components/account/account-icon-button";
 
-export async function SiteHeader() {
-  const categories = await getCategories();
+const NAV_LINKS = [
+  { href: "/collections/all", label: "Shop" },
+  { href: "/recipes", label: "Recipes" },
+  { href: "/about", label: "Our Story" },
+  { href: "/contact", label: "Contact" },
+];
 
+export function SiteHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-ink/10 bg-cream/90 backdrop-blur">
       <div className="hidden bg-ink text-cream sm:block">
@@ -28,30 +34,16 @@ export async function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-7 lg:flex">
-          <Link href="/collections/all" className="font-medium hover:text-chili">
-            All Products
-          </Link>
-          <Link href="/deals" className="font-medium hover:text-chili">
-            Deals
-          </Link>
-          {categories.slice(0, 4).map((cat) => (
-            <Link
-              key={cat.id}
-              href={`/collections/${cat.slug}`}
-              className="font-medium hover:text-chili"
-            >
-              {cat.name}
+          {NAV_LINKS.map((link) => (
+            <Link key={link.href} href={link.href} className="font-medium hover:text-chili">
+              {link.label}
             </Link>
           ))}
         </nav>
 
         <div className="flex items-center gap-1">
-          <Link
-            href="/collections/all"
-            className="hidden h-10 items-center justify-center rounded-full px-4 font-heading text-sm font-semibold hover:bg-cream-dark sm:flex"
-          >
-            Shop now
-          </Link>
+          <SearchButton />
+          <AccountIconButton />
           <CartButton />
 
           <details className="relative lg:hidden">
@@ -59,19 +51,9 @@ export async function SiteHeader() {
               <span className="text-xl">☰</span>
             </summary>
             <nav className="absolute right-0 z-40 mt-2 flex w-56 flex-col gap-1 rounded-2xl border border-ink/10 bg-cream p-3 shadow-xl">
-              <Link href="/collections/all" className="rounded-lg px-3 py-2 hover:bg-cream-dark">
-                All Products
-              </Link>
-              <Link href="/deals" className="rounded-lg px-3 py-2 hover:bg-cream-dark">
-                Deals
-              </Link>
-              {categories.map((cat) => (
-                <Link
-                  key={cat.id}
-                  href={`/collections/${cat.slug}`}
-                  className="rounded-lg px-3 py-2 hover:bg-cream-dark"
-                >
-                  {cat.name}
+              {NAV_LINKS.map((link) => (
+                <Link key={link.href} href={link.href} className="rounded-lg px-3 py-2 hover:bg-cream-dark">
+                  {link.label}
                 </Link>
               ))}
             </nav>

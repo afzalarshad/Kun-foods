@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requirePermission } from "@/lib/require-admin";
 import { logAudit } from "@/lib/audit";
-import { setSettings, SETTING_KEYS, SLA_SETTING_KEYS } from "@/lib/settings";
+import { prisma } from "@/lib/prisma";
+import { setSettings, SETTING_KEYS, SLA_SETTING_KEYS, FIRST_ORDER_COUPON_CODE } from "@/lib/settings";
 
 const schema = z.object({
   storeName: z.string().min(1).max(150),
@@ -42,6 +43,43 @@ export async function updateSettings(formData: FormData) {
   });
 
   revalidatePath("/admin/settings");
+}
+
+export async function updateFirstOrderDiscount(formData: FormData) {
+  const session = await requirePermission("settings.manage");
+  const actorEmail = session.user.email ?? "unknown";
+
+  const percent = z.coerce.number().int().min(0).max(90).parse(formData.get("percent"));
+
+  await setSettings({ [SETTING_KEYS.firstOrderDiscountPercent]: String(percent) });
+
+  // The popup always unlocks the same well-known code; keep its coupon row's value/active state
+  // in sync so a percent of 0 turns the whole thing off without an admin having to remember a
+  // second place to disable it.
+  await prisma.coupon.upsert({
+    where: { code: FIRST_ORDER_COUPON_CODE },
+    update: { value: percent, active: percent > 0 },
+    create: {
+      code: FIRST_ORDER_COUPON_CODE,
+      type: "percentage",
+      value: percent,
+      active: percent > 0,
+      firstOrderOnly: true,
+    },
+  });
+
+  await logAudit({
+    actorEmail,
+    action: "settings.first_order_discount_update",
+    entityType: "Setting",
+    after: { percent },
+  });
+
+  revalidatePath("/admin/settings");
+  // The popup renders from the root storefront layout on every page, several of which are
+  // statically generated (ISR) -- without this the new percent wouldn't show up until the next
+  // revalidation window instead of immediately.
+  revalidatePath("/", "layout");
 }
 
 const slaPriorities = ["urgent", "high", "normal", "low"] as const;

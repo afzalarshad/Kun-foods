@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ProductCard } from "@/components/product/product-card";
@@ -56,7 +57,10 @@ export default async function CollectionPage({
   const { sort } = await searchParams;
 
   const isAll = slug === "all";
-  const category = isAll ? null : await getCategoryBySlug(slug);
+  const [category, categories] = await Promise.all([
+    isAll ? Promise.resolve(null) : getCategoryBySlug(slug),
+    getCategories(),
+  ]);
   if (!isAll && !category) notFound();
 
   const products = isAll ? dedupeByVariantGroup(await getAllProducts()) : await getProductsByCategory(slug);
@@ -76,6 +80,31 @@ export default async function CollectionPage({
           <h1 className="font-heading text-3xl font-extrabold sm:text-4xl">{title}</h1>
           {description && <p className="mt-1 text-ink-soft">{description}</p>}
         </div>
+      </div>
+
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <Link
+          href="/collections/all"
+          className={`rounded-full px-4 py-2 text-sm font-semibold ${
+            isAll ? "bg-ink text-cream" : "bg-cream-dark hover:bg-cream-dark/70"
+          }`}
+        >
+          All
+        </Link>
+        {categories.map((cat) => (
+          <Link
+            key={cat.id}
+            href={`/collections/${cat.slug}`}
+            className={`rounded-full px-4 py-2 text-sm font-semibold ${
+              !isAll && category?.id === cat.id ? "bg-ink text-cream" : "bg-cream-dark hover:bg-cream-dark/70"
+            }`}
+          >
+            {cat.image} {cat.name}
+          </Link>
+        ))}
+        <Link href="/deals" className="rounded-full bg-cream-dark px-4 py-2 text-sm font-semibold hover:bg-cream-dark/70">
+          🔥 Deals
+        </Link>
       </div>
 
       <div className="mb-6 flex items-center justify-between">

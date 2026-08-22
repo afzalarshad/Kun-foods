@@ -8,6 +8,19 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model Recipe {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  excerpt     String
+  body        String // markdown/plain-text content
+  image       String? // emoji placeholder or image URL, same convention as ProductImage
+  published   Boolean  @default(false)
+  authorEmail String? // staff member who wrote/last edited it
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model Category {
   id          String      @id @default(cuid())
   name        String
@@ -121,17 +134,18 @@ model BundleItem {
 }
 
 model Coupon {
-  id          String    @id @default(cuid())
-  code        String    @unique
-  type        String // "percentage" | "fixed"
-  value       Int // 1-100 for percentage, paisa amount for fixed
-  minSubtotal Int       @default(0)
-  usageLimit  Int?
-  usedCount   Int       @default(0)
-  active      Boolean   @default(true)
-  expiresAt   DateTime?
-  orders      Order[]
-  createdAt   DateTime  @default(now())
+  id            String    @id @default(cuid())
+  code          String    @unique
+  type          String // "percentage" | "fixed"
+  value         Int // 1-100 for percentage, paisa amount for fixed
+  minSubtotal   Int       @default(0)
+  usageLimit    Int?
+  usedCount     Int       @default(0)
+  active        Boolean   @default(true)
+  firstOrderOnly Boolean  @default(false) // restricts redemption to emails with no prior orders (the first-visit discount popup)
+  expiresAt     DateTime?
+  orders        Order[]
+  createdAt     DateTime  @default(now())
 }
 
 model Promotion {
@@ -157,20 +171,22 @@ model Promotion {
 }
 
 model Customer {
-  id        String            @id @default(cuid())
-  name      String
-  email     String            @unique
-  phone     String
-  address   String?
-  city      String?
-  source    String? // how they found us / acquisition channel, free text
-  orders    Order[]
-  tags      CustomerTag[]
-  notes     CustomerNote[]
-  tickets   SupportTicket[]
-  addresses CustomerAddress[]
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
+  id           String            @id @default(cuid())
+  name         String
+  email        String            @unique
+  phone        String
+  address      String?
+  city         String?
+  source       String? // how they found us / acquisition channel, free text
+  passwordHash String? // set once a customer creates an account (email/password); null = guest-only or Google-only
+  authProvider String? // "credentials" | "google" | null (no account yet, just an order-derived record)
+  orders       Order[]
+  tags         CustomerTag[]
+  notes        CustomerNote[]
+  tickets      SupportTicket[]
+  addresses    CustomerAddress[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 }
 
 model CustomerAddress {

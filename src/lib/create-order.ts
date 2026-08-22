@@ -93,6 +93,10 @@ export async function createOrder(input: CreateOrderInput) {
     if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
       throw new OrderError("This coupon has reached its usage limit");
     }
+    if (coupon.firstOrderOnly) {
+      const priorOrder = await prisma.order.findFirst({ where: { email: input.email.toLowerCase() } });
+      if (priorOrder) throw new OrderError("This coupon is only valid on your first order");
+    }
     if (subtotal < coupon.minSubtotal) {
       throw new OrderError(`This coupon requires a minimum order of ${coupon.minSubtotal / 100} Rs.`);
     }

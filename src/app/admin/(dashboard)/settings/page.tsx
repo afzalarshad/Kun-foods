@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/require-admin";
 import { getSettings, SETTING_KEYS, SLA_SETTING_KEYS } from "@/lib/settings";
-import { updateSettings, updateSlaThresholds } from "@/app/admin/(dashboard)/settings/actions";
+import { updateSettings, updateSlaThresholds, updateFirstOrderDiscount } from "@/app/admin/(dashboard)/settings/actions";
 
 const slaPriorities = ["urgent", "high", "normal", "low"] as const;
 const slaMetrics = [
@@ -92,6 +92,31 @@ export default async function SettingsPage() {
           className="mt-6 rounded-full bg-chili px-7 py-3 font-heading font-semibold text-white hover:bg-chili-dark"
         >
           Save settings
+        </button>
+      </form>
+
+      <form action={updateFirstOrderDiscount} className="mt-6 rounded-3xl bg-white p-6 shadow-sm">
+        <h2 className="font-heading font-bold">First-order discount popup</h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          Shown once to first-time visitors: &ldquo;Get X% off your first order&rdquo;, unlocked by
+          entering an email. Set to 0 to turn the popup off entirely.
+        </p>
+        <div className="mt-4 flex items-center gap-2">
+          <input
+            type="number"
+            name="percent"
+            min={0}
+            max={90}
+            defaultValue={settings[SETTING_KEYS.firstOrderDiscountPercent]}
+            className="w-24 rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+          />
+          <span className="text-sm font-medium text-ink-soft">% off, code WELCOME</span>
+        </div>
+        <button
+          type="submit"
+          className="mt-6 rounded-full bg-chili px-7 py-3 font-heading font-semibold text-white hover:bg-chili-dark"
+        >
+          Save discount
         </button>
       </form>
 

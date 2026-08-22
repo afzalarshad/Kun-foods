@@ -27,6 +27,7 @@ export const PERMISSIONS = [
   "users.manage",
   "pos.operate",
   "settings.manage",
+  "content.manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -47,7 +48,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "promotions.manage", "shipping.manage", "support.manage",
     "warehouse.pick", "warehouse.pack",
     "reports.view", "reports.financial",
-    "import_export.manage", "pos.operate",
+    "import_export.manage", "pos.operate", "content.manage",
   ],
   sales: [
     "customers.view", "customers.edit",
@@ -75,7 +76,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "reports.view", "reports.financial",
     "orders.view", "customers.view",
   ],
-  marketing: ["promotions.manage", "customers.view", "customers.export", "reports.view"],
+  marketing: ["promotions.manage", "customers.view", "customers.export", "reports.view", "content.manage"],
   pos_operator: ["pos.operate", "customers.view", "customers.edit", "products.view"],
   read_only: ["customers.view", "orders.view", "products.view", "inventory.view", "reports.view"],
   // legacy roles from before the granular permission system
@@ -87,7 +88,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "inventory.view", "inventory.adjust", "warehouses.manage",
     "promotions.manage", "shipping.manage", "support.manage",
     "warehouse.pick", "warehouse.pack",
-    "reports.view", "import_export.manage", "pos.operate",
+    "reports.view", "import_export.manage", "pos.operate", "content.manage",
   ],
   pos: ["pos.operate", "customers.view", "customers.edit", "products.view"],
 };

@@ -25,6 +25,18 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [email, setEmail] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [houseAddress, setHouseAddress] = useState("");
+  const [areaAddress, setAreaAddress] = useState("");
+
+  // Billing address is only asked for on card payments (COD has no billing use for it) and is
+  // "same as shipping" by default -- there's no real payment gateway wired in yet to consume it
+  // (see the Payments section in README), so it isn't sent to the order API; it's captured here
+  // ready for whichever gateway (Stripe, JazzCash, etc.) eventually gets plugged into handleSubmit.
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
+  const [billingName, setBillingName] = useState("");
+  const [billingAddress, setBillingAddress] = useState("");
+  const [billingCity, setBillingCity] = useState("");
 
   function handleProvinceChange(newProvince: PakistanProvince | "") {
     setProvince(newProvince);
@@ -78,28 +90,48 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, JSON.stringify(items.map((i) => [i.id, i.quantity])), email]);
 
-  async function handleApplyCoupon() {
-    if (!couponInput.trim()) return;
+  async function applyCouponCode(code: string, options?: { silent?: boolean }) {
     setApplyingCoupon(true);
-    setCouponError(null);
+    if (!options?.silent) setCouponError(null);
     try {
       const res = await fetch("/api/coupons/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: couponInput, subtotal: subtotal() }),
+        body: JSON.stringify({ code, subtotal: subtotal(), email }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Invalid coupon code");
       setCoupon(data.code);
       setCouponDiscount(data.discount);
     } catch (err) {
-      setCoupon(null);
-      setCouponDiscount(0);
-      setCouponError(err instanceof Error ? err.message : "Invalid coupon code");
+      // A silent (auto) revalidation leaves the code in place on failure -- it likely just needs
+      // the email field filled in (first-order coupons require it) and will succeed once that
+      // happens, rather than yanking away a discount the customer already unlocked.
+      if (!options?.silent) {
+        setCoupon(null);
+        setCouponDiscount(0);
+        setCouponError(err instanceof Error ? err.message : "Invalid coupon code");
+      }
     } finally {
       setApplyingCoupon(false);
     }
   }
+
+  function handleApplyCoupon() {
+    if (!couponInput.trim()) return;
+    applyCouponCode(couponInput);
+  }
+
+  // A coupon code can already be sitting in the persisted cart store (e.g. unlocked via the
+  // first-order discount popup on an earlier page) -- revalidate it whenever the cart hydrates
+  // or the email changes, so the discount shows up in the total as soon as it can (first-order
+  // coupons need the email to check eligibility) instead of only applying at submit time.
+  useEffect(() => {
+    if (!hydrated || !couponCode || couponDiscount > 0) return;
+    const handle = setTimeout(() => applyCouponCode(couponCode, { silent: true }), 350);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, couponCode, email]);
 
   function handleRemoveCoupon() {
     setCoupon(null);
@@ -119,8 +151,6 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
     setSubmitting(true);
 
     const form = new FormData(e.currentTarget);
-    const houseAddress = String(form.get("houseAddress") ?? "").trim();
-    const areaAddress = String(form.get("areaAddress") ?? "").trim();
     const landmark = String(form.get("landmark") ?? "").trim();
     const address = [houseAddress, areaAddress, landmark ? `Near ${landmark}` : ""]
       .filter(Boolean)
@@ -130,8 +160,8 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customerName: form.get("customerName"),
-          email: form.get("email"),
+          customerName,
+          email,
           phone: form.get("phone"),
           address,
           city,
@@ -180,47 +210,61 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
 
       <div className="grid gap-10 lg:grid-cols-3">
         <form onSubmit={handleSubmit} className="flex flex-col gap-6 lg:col-span-2">
-          <fieldset className="flex flex-col gap-4">
-            <legend className="mb-1 font-heading text-lg font-bold">Contact & delivery</legend>
+          <fieldset className="flex flex-col gap-4 rounded-3xl bg-white p-6 shadow-sm">
+            <legend className="mb-1 flex items-center gap-2 px-1 font-heading text-lg font-bold">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-xs text-cream">1</span>
+              Contact
+            </legend>
+            <input
+              type="email"
+              name="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email address"
+              className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+            />
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-4 rounded-3xl bg-white p-6 shadow-sm">
+            <legend className="mb-1 flex items-center gap-2 px-1 font-heading text-lg font-bold">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-xs text-cream">2</span>
+              Delivery
+            </legend>
             <input
               name="customerName"
               required
               pattern={PERSON_NAME_HTML_PATTERN}
               title="Letters and spaces only — no numbers or symbols"
               placeholder="Full name"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
               className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
             />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <input
-                type="email"
-                name="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email address"
-                className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
-              />
-              <input
-                type="tel"
-                name="phone"
-                required
-                inputMode="tel"
-                pattern="(\+92|0092|92|0)?3\d{9}"
-                title="Enter a valid Pakistani mobile number, e.g. 03001234567"
-                placeholder="Mobile number (03XXXXXXXXX)"
-                className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
-              />
-            </div>
+            <input
+              type="tel"
+              name="phone"
+              required
+              inputMode="tel"
+              pattern="(\+92|0092|92|0)?3\d{9}"
+              title="Enter a valid Pakistani mobile number, e.g. 03001234567"
+              placeholder="Mobile number (03XXXXXXXXX)"
+              className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+            />
             <input
               name="houseAddress"
               required
               placeholder="House / Flat #, Street"
+              value={houseAddress}
+              onChange={(e) => setHouseAddress(e.target.value)}
               className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
             />
             <input
               name="areaAddress"
               required
               placeholder="Area, Sector / Block, Society"
+              value={areaAddress}
+              onChange={(e) => setAreaAddress(e.target.value)}
               className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
             />
             <input
@@ -269,8 +313,11 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
             />
           </fieldset>
 
-          <fieldset>
-            <legend className="mb-3 font-heading text-lg font-bold">Payment method</legend>
+          <fieldset className="rounded-3xl bg-white p-6 shadow-sm">
+            <legend className="mb-3 flex items-center gap-2 px-1 font-heading text-lg font-bold">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-xs text-cream">3</span>
+              Payment method
+            </legend>
             <div className="flex flex-col gap-3">
               <label
                 className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-3 ${
@@ -311,6 +358,52 @@ export function CheckoutForm({ zones }: { zones: ShippingZonePreview[] }) {
               </label>
             </div>
           </fieldset>
+
+          {paymentMethod === "card" && (
+            <fieldset className="flex flex-col gap-4 rounded-3xl bg-white p-6 shadow-sm">
+              <legend className="mb-1 flex items-center gap-2 px-1 font-heading text-lg font-bold">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-xs text-cream">4</span>
+                Billing address
+              </legend>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={billingSameAsShipping}
+                  onChange={(e) => setBillingSameAsShipping(e.target.checked)}
+                />
+                Same as shipping address
+              </label>
+
+              {billingSameAsShipping ? (
+                <p className="rounded-2xl bg-cream-dark px-4 py-3 text-sm text-ink-soft">
+                  {customerName || "Your name"}
+                  {houseAddress || areaAddress ? `, ${[houseAddress, areaAddress].filter(Boolean).join(", ")}` : ""}
+                  {city ? `, ${city}` : ""}
+                </p>
+              ) : (
+                <>
+                  <input
+                    placeholder="Full name on card"
+                    value={billingName}
+                    onChange={(e) => setBillingName(e.target.value)}
+                    className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+                  />
+                  <input
+                    placeholder="Billing address"
+                    value={billingAddress}
+                    onChange={(e) => setBillingAddress(e.target.value)}
+                    className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+                  />
+                  <input
+                    placeholder="City"
+                    value={billingCity}
+                    onChange={(e) => setBillingCity(e.target.value)}
+                    className="rounded-2xl border border-ink/20 bg-white px-4 py-3 focus:border-chili focus:outline-none"
+                  />
+                </>
+              )}
+            </fieldset>
+          )}
 
           {error && (
             <p className="rounded-xl bg-chili/10 px-4 py-3 text-sm font-medium text-chili-dark">
